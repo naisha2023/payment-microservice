@@ -1,0 +1,30 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: jdbc:postgresql://payment-db:5432/payment_db
+    username: user_admin
+    password: root_password
+  application:
+    name: payment-service
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+      discovery:
+        register: true
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        hostname: ${spring.application.name}
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: admin
+    password: naisha2106
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

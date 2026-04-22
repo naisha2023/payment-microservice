@@ -1,0 +1,183 @@
+x-db-env: &db-env
+  SPRING_DATASOURCE_USERNAME: ${DB_USER:-user_admin}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-root_password}
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+x-rabbitmq-env: &rabbitmq-env
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: 5672
+  SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-admin}
+  SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin123}
+
+x-jwt-env: &jwt-env
+  JWT_SECRET: ${JWT_SECRET:-NaishaIsabel@Samuel2103SuperSecretKeyJWT2026Secure}
+
+# Anchor único que combina depends_on + restart para evitar duplicate merge keys
+x-service-base: &service-base
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-user_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root_password}
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user_admin} -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  consul:
+    image: hashicorp/consul:1.20
+    container_name: consul
+    restart: unless-stopped
+    ports:
+      - "8500:8500"
+    command: "agent -server -bootstrap -ui -client=0.0.0.0"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  auth-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      <<: [*db-env, *rabbitmq-env, *jwt-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+    networks:
+      - backend
+
+  wallet-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: wallet-service/Dockerfile
+    container_name: wallet-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: [*db-env, *rabbitmq-env, *jwt-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wallet_db
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+    networks:
+      - backend
+
+  payment-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: payment-service
+    ports:
+      - "8083:8083"
+    environment:
+      <<: [*db-env, *rabbitmq-env, *jwt-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
+      SERVICES_WALLET_BASE_URL: http://wallet-service:8082
+    networks:
+      - backend
+
+  ledger-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: ledger-service/Dockerfile
+    container_name: ledger-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: [*db-env, *rabbitmq-env, *jwt-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger_db
+      SERVER_PORT: 8084
+    networks:
+      - backend
+
+  notification-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      <<: [*db-env, *rabbitmq-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
+    networks:
+      - backend
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *jwt-env
+    depends_on:
+      auth-service:
+        condition: service_started
+      wallet-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      ledger-service:
+        condition: service_started
+      consul:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  postgres-data:
+
+networks:
+  backend:
+    driver: bridge

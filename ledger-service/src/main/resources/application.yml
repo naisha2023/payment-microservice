@@ -1,0 +1,50 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ledger-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ledger-db:5432/ledger_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:naisha2106}
+  cloud:
+    consul:
+      host: ${SPRING_CLOUD_CONSUL_HOST:consul}
+      port: ${SPRING_CLOUD_CONSUL_PORT:8500}
+      discovery:
+        register: true
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        hostname: ${spring.application.name}
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

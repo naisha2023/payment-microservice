@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+      discovery:
+        register: true
+
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+          routes:
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=1
+
+            - id: walletservice
+              uri: lb://walletservice
+              predicates:
+                - Path=/api/wallets/**
+              filters:
+                - StripPrefix=1
+            - id: payment-service
+              uri: http://payment-service:8083
+              predicates:
+                - Path=/api/payments/**
+              filters:
+                - StripPrefix=1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
