@@ -1,6 +1,7 @@
 package org.example.paymentservice.config;
 
 import org.example.paymentservice.repository.OutboxRepository;
+import org.example.shared.config.RabbitConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,21 +22,21 @@ public class OutboxPublisher {
         var events = outboxRepository.findByPublishedFalse();
 
         for (var event : events) {
-            try {
-                rabbitTemplate.convertAndSend(
-                        "payment.exchange",
-                        "payment.created",
-                        event.getPayload()
-                );
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitConfig.EXCHANGE,
+                    event.getRoutingKey(),
+                    event.getPayload()
+            );
 
-                event.setPublished(true);
-                outboxRepository.save(event);
+            event.setPublished(true);
+            outboxRepository.save(event);
 
-                log.info("Evento publicado: {}", event.getId());
+            log.info("Event published: id={}, routingKey={}", event.getId(), event.getRoutingKey());
 
-            } catch (Exception e) {
-                log.error("Error publicando evento {}", event.getId(), e);
-            }
+        } catch (Exception e) {
+            log.error("Error publishing event {}", event.getId(), e);
         }
+    }
     }
 }

@@ -27,4 +27,5 @@ public final class PaymentConstants {
     public static final String OUTBOX_AGGREGATE_TYPE = "PAYMENT";
     public static final String EVENT_PAYMENT_CREATED = "PAYMENT_CREATED";
     public static final String EVENT_PAYMENT_COMPLETED = "payment.completed";
+    public static final String EVENT_MESSAGE_SEND = "payment.message.send";
 }

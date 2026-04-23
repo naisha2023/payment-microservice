@@ -1,6 +1,7 @@
 package org.example.authservice.interfaces;
 
 import org.example.authservice.dto.*;
+import org.example.shared.dtos.UserResponse;
 
 import java.util.List;
 import java.util.UUID;

@@ -13,6 +13,7 @@ COPY notification-service/pom.xml ./notification-service/pom.xml
 RUN mvn -pl notification-service -am dependency:go-offline
 
 COPY notification-service/src ./notification-service/src
+COPY shared/src ./shared/src
 
 RUN mvn -pl notification-service -am clean package -DskipTests
 

@@ -5,6 +5,7 @@ import org.example.authservice.repository.UserRepository;
 import org.example.authservice.security.CustomUserDetails;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -53,8 +54,10 @@ public class SecurityConfig {
                                 "/auth/swagger-ui/**",
                                 "/auth/v3/api-docs/**",
                                 "/actuator/health",
-                                "/actuator/info"
+                                "/actuator/info",
+                                "/auth/internal/token"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET,"/auth/users/**").hasRole("SYSTEM_SERVICE")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

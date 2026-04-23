@@ -1,6 +1,11 @@
 package org.example.authservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,10 +14,12 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+
 
 import org.example.authservice.exception.InvalidRequestException;
 import org.example.authservice.security.CustomUserDetails;
@@ -43,6 +50,35 @@ public class JwtService {
         return buildToken(claims, user, ACCESS_TOKEN_EXP);
     }
 
+    public String generateAccessToken() {
+        String token = buildToken(
+                Map.of(
+                    "role", "SYSTEM_SERVICE",
+                    "type", "access"
+                ),
+                "notification-service",
+                ACCESS_TOKEN_EXP
+        );
+        return token;
+    }
+
+    private String buildToken(Map<String, Object> extraClaims, String subject, long expirationMillis) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMillis);
+
+        return Jwts.builder()
+                .setClaims(extraClaims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private Key getSignInKey() {
+    return new SecretKeySpec(secretKey, 0, secretKey.length, HMAC_ALGORITHM);
+}
+
     public String generateRefreshToken(UserDetails user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("type", "refresh");
@@ -72,7 +108,7 @@ public class JwtService {
     }
 
     public <T> T extractClaim(String token, Function<Map<String, Object>, T> claimsResolver) {
-        Map<String, Object> claims = extractAllClaims(token);
+        final Map<String, Object> claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 

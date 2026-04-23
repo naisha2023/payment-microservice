@@ -3,12 +3,11 @@ package org.example.authservice.entity;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.example.shared.dtos.UserResponse;
 import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import org.example.authservice.dto.UserResponse;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

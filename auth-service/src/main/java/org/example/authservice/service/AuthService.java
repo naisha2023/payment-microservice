@@ -16,13 +16,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.example.shared.dtos.UserResponse;
 import org.example.shared.event.UserCreatedEvent;
 
 import org.example.authservice.repository.UserRepository;
 import org.example.authservice.security.CustomUserDetails;
 import org.example.authservice.dto.RegisterRequest;
 import org.example.authservice.dto.RoleResponse;
-import org.example.authservice.dto.UserResponse;
 import org.example.authservice.dto.AuthResponse;
 import org.example.authservice.dto.LoginRequest;
 import org.example.authservice.dto.RefreshRequest;
@@ -195,6 +195,11 @@ public class AuthService implements AuthServiceInterface {
         return toUserResponse(user);
     }
 
+    public UserResponse getUserById(UUID userId) {
+        Users user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException(AuthConstants.ERROR_USER_NOT_FOUND));
+        return toUserResponse(user);
+    }
+
     /**
      * Obtiene todos los usuarios del sistema
      */
@@ -332,5 +337,9 @@ public class AuthService implements AuthServiceInterface {
             log.error("Error al publicar evento UserCreated para usuario: {}", user.getId(), e);
             // No lanzamos excepción para no afectar el registro
         }
+    }
+
+    public String generateServiceToken() {
+        return jwtService.generateAccessToken();
     }
 }

@@ -1,0 +1,44 @@
+server:
+  port: 8085
+
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: gsmarin85@gmail.com
+    password: Naisha@2014
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  datasource:
+    url: jdbc:postgresql://notification-db:5432/notification_db
+    username: user_admin
+    password: root_password
+  application:
+    name: notification-service
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+      discovery:
+        register: true
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        hostname: ${spring.application.name}
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: admin
+    password: naisha2106
+
+auth-service:
+  base-url: http://auth-service:8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

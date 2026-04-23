@@ -1,7 +1,7 @@
 package org.example.paymentservice.exception;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.paymentservice.dto.ApiResponse;
+import org.example.shared.dtos.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;

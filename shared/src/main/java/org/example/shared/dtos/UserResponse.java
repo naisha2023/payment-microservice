@@ -1,4 +1,4 @@
-package org.example.authservice.dto;
+package org.example.shared.dtos;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

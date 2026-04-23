@@ -6,7 +6,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import org.example.paymentservice.client.WalletClient;
 import org.example.paymentservice.constants.PaymentConstants;
-import org.example.paymentservice.dto.ApiResponse;
 import org.example.paymentservice.dto.CreatePaymentRequest;
 import org.example.paymentservice.dto.PaymentResponse;
 import org.example.paymentservice.dto.WalletOperationRequest;
@@ -20,14 +19,18 @@ import org.example.paymentservice.exception.PaymentNotAuthorizedException;
 import org.example.paymentservice.exception.PaymentNotFoundException;
 import org.example.paymentservice.repository.OutboxRepository;
 import org.example.paymentservice.repository.PaymentRepository;
+import org.example.shared.config.RabbitConfig;
+import org.example.shared.dtos.ApiResponse;
 import org.example.shared.dtos.PaymentCompletedEvent;
 import org.example.shared.dtos.PaymentCreatedEvent;
+import org.example.shared.event.NotificationEvent;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -129,7 +132,7 @@ public PaymentResponse createPayment(CreatePaymentRequest request, Jwt jwt, Stri
     private void publishPaymentCompletedEvent(Payment payment) {
         log.info("Guardando evento PaymentCompleted en outbox para pago: {}", payment.getId());
 
-        PaymentCompletedEvent event = new PaymentCompletedEvent(
+        PaymentCompletedEvent paymentEvent = new PaymentCompletedEvent(
                 UUID.randomUUID(),
                 EventType.PAYMENT_COMPLETED.getDescription(),
                 Instant.now(),
@@ -141,18 +144,40 @@ public PaymentResponse createPayment(CreatePaymentRequest request, Jwt jwt, Stri
                 payment.getStatus().name()
         );
 
-        OutboxEvent outbox = new OutboxEvent(
+        NotificationEvent notificationEvent = new NotificationEvent(
+                payment.getUserId(),
+                payment.getId(),
+                EventType.PAYMENT_COMPLETED.getDescription()
+        );
+
+        List<OutboxEvent> outboxEvents = new ArrayList<>();
+        outboxEvents.add(new OutboxEvent(
                 null,
                 PaymentConstants.OUTBOX_AGGREGATE_TYPE,
                 payment.getId().toString(),
                 PaymentConstants.EVENT_PAYMENT_COMPLETED,
-                toJson(event),
+                toJson(paymentEvent),
                 Instant.now(),
-                false
-        );
+                false,
+                RabbitConfig.PAYMENT_PROCESSED_ROUTING_KEY
+        ));
 
-        outboxRepository.save(outbox);
+        outboxEvents.add(new OutboxEvent(
+                null,
+                PaymentConstants.OUTBOX_AGGREGATE_TYPE,
+                payment.getId().toString(),
+                PaymentConstants.EVENT_MESSAGE_SEND,
+                toJson(notificationEvent),
+                Instant.now(),
+                false,
+                RabbitConfig.NOTIFICATION_CREATED_ROUTING_KEY
+        ));
 
+        outboxRepository.saveAll(outboxEvents);
+
+        log.info("eventos en outbox a ser publicados: {}", outboxEvents.stream().map(OutboxEvent::getId).toList());
+
+        log.info("notificacion enviada correctamente");
         log.info("Evento PaymentCompleted guardado correctamente en outbox para pago: {}", payment.getId());
     }
 
@@ -283,7 +308,8 @@ public PaymentResponse createPayment(CreatePaymentRequest request, Jwt jwt, Stri
                 PaymentConstants.EVENT_PAYMENT_CREATED,
                 toJson(event),
                 Instant.now(),
-                false
+                false,
+                RabbitConfig.PAYMENT_CREATED_ROUTING_KEY
         );
 
         outboxRepository.save(outbox);

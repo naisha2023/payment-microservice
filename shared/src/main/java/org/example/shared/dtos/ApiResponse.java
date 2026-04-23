@@ -1,4 +1,4 @@
-package org.example.authservice.dto;
+package org.example.shared.dtos;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;

@@ -1,24 +1,26 @@
 package org.example.notificationservice.controller;
 
-import java.util.List;
-
-import org.example.notificationservice.entity.Notification;
-import org.example.notificationservice.repository.NotificationRepository;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.example.notificationservice.service.NotificationService;
+import org.example.shared.event.NotificationEvent;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/notifications")
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationController {
 
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
-    @GetMapping
-    public List<Notification> getAll() {
-        return notificationRepository.findAll();
+    @PostMapping
+    public void sendNotification(@RequestBody NotificationEvent notificationRequest) {
+        log.info("New notification... {}", notificationRequest);
+        notificationService.send(notificationRequest);
     }
 }

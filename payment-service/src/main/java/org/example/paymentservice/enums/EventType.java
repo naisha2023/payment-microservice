@@ -4,7 +4,8 @@ public enum EventType {
     PAYMENT_CREATED("payment.created"),
     PAYMENT_UPDATED("payment.updated"),
     PAYMENT_DELETED("payment.deleted"),
-    PAYMENT_COMPLETED("payment.completed");
+    PAYMENT_COMPLETED("payment.completed"),
+    MESSAGE_SEND("message.send");
 
     private final String description;
 

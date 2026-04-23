@@ -35,4 +35,7 @@ public class OutboxEvent {
 
     private Instant createdAt;
     private boolean published;
+
+    @Column(nullable = false)
+    private String routingKey;
 }

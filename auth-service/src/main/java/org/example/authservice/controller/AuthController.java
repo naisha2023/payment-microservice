@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.authservice.dto.*;
 import org.example.authservice.security.CustomUserDetails;
 import org.example.authservice.service.AuthService;
+import org.example.shared.dtos.ApiResponse;
+import org.example.shared.dtos.UserResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -129,6 +132,23 @@ public class AuthController {
         log.info("Solicitud de lista de todos los roles");
         Iterable<RoleResponse> roles = authService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.success(roles));
+    }
+
+    @Operation(summary = "Find user by id", description = "Returns user information by user id")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_SERVICE')")
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<ApiResponse<UserResponse>> findUserById(@PathVariable UUID userId) {
+        log.info("Finding user by id: {}", userId);
+        UserResponse user = authService.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+
+    @PostMapping("/internal/token")
+    public ResponseEntity<String> generateServiceToken() {
+        String token = authService.generateServiceToken();
+
+        return ResponseEntity.ok(token);
     }
 
     /**

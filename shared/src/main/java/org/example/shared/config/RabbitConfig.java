@@ -17,6 +17,7 @@ public class RabbitConfig {
     public static final String PAYMENT_PROCESSED_ROUTING_KEY = "payment.processed";
     public static final String PAYMENT_CREATED_ROUTING_KEY = "payment.created";
     public static final String WALLET_RELEASE_FUNDED_ROUTING_KEY = "wallet.release.funded";
+    public static final String NOTIFICATION_CREATED_ROUTING_KEY = "notification.created";
 
     // Queues
     public static final String USER_CREATED_QUEUE = "user.created.queue";
@@ -25,6 +26,7 @@ public class RabbitConfig {
     public static final String WALLET_DEBIT_CONFIRMED_QUEUE = "wallet.debit.confirmed.queue";
     public static final String PAYMENT_CREATED_QUEUE = "payment.created.queue";
     public static final String WALLET_RELEASE_FUNDED_QUEUE = "wallet.release.funded.queue";
+    public static final String NOTIFICATION_CREATED_QUEUE = "notification.created.queue";
     @Bean
     public TopicExchange exchange() {
         return new TopicExchange(EXCHANGE);
@@ -124,5 +126,21 @@ public class RabbitConfig {
                 .bind(walletReleaseFundedQueue())
                 .to(exchange())
                 .with(WALLET_RELEASE_FUNDED_ROUTING_KEY);
+    }
+
+    //=======================
+    // NOTIFICATION CREATED
+    //=======================
+    @Bean
+    public Queue notificationCreatedQueue() {
+        return QueueBuilder.durable(NOTIFICATION_CREATED_QUEUE).build();
+    }
+
+    @Bean
+    public Binding notificationCreatedBinding() {
+        return BindingBuilder
+                .bind(notificationCreatedQueue())
+                .to(exchange())
+                .with(NOTIFICATION_CREATED_ROUTING_KEY);
     }
 }
