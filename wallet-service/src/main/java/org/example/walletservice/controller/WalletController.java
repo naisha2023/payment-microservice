@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.example.shared.interfaces.Auditable;
 import org.example.walletservice.dto.*;
 import org.example.walletservice.service.WalletService;
 import org.springframework.http.HttpStatus;
@@ -31,6 +33,7 @@ public class WalletController {
     @Operation(summary = "Obtener wallet por ID de usuario", description = "Devuelve la información de la wallet de un usuario específico")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{userId}")
+    @Auditable(action = "GET WALLET", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> getWallet(
             @PathVariable UUID userId,
             @AuthenticationPrincipal Jwt jwt) {
@@ -43,6 +46,7 @@ public class WalletController {
     @Operation(summary = "Obtener balance de wallet", description = "Devuelve el balance actual, reservado y disponible de una wallet")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{userId}/balance")
+    @Auditable(action = "GET WALLET BALANCE", resource = "WALLET")
     public ResponseEntity<ApiResponse<BalanceResponse>> getBalance(@PathVariable UUID userId) {
         log.info("Solicitud de balance para userId: {}", userId);
         BalanceResponse balance = walletService.getBalance(userId);
@@ -52,6 +56,7 @@ public class WalletController {
     @Operation(summary = "Reservar fondos", description = "Reserva fondos en la wallet para un pago pendiente")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{userId}/reserve")
+    @Auditable(action = "RESERVE FUNDS", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> reserve(
             @PathVariable UUID userId,
             @Valid @RequestBody ReserveFundsRequest request) {
@@ -63,6 +68,7 @@ public class WalletController {
     @Operation(summary = "Liberar fondos reservados", description = "Libera fondos previamente reservados")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{userId}/release")
+    @Auditable(action = "RELEASE FUNDS", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> release(
             @PathVariable UUID userId,
             @Valid @RequestBody ReleaseFundsRequest request) {
@@ -74,6 +80,7 @@ public class WalletController {
     @Operation(summary = "Confirmar débito", description = "Confirma un débito y deduce los fondos reservados del balance")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{userId}/confirm-debit")
+    @Auditable(action = "CONFIRM DEBIT", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> confirmDebit(
             @PathVariable UUID userId,
             @Valid @RequestBody ConfirmDebitRequest request) {
@@ -85,6 +92,7 @@ public class WalletController {
     @Operation(summary = "Acreditar fondos", description = "Acredita fondos a la wallet")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{userId}/credit")
+    @Auditable(action = "CREDIT FUNDS", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> credit(
             @PathVariable UUID userId,
             @Valid @RequestBody CreditRequest request) {
@@ -95,6 +103,7 @@ public class WalletController {
 
     @Operation(summary = "Crear wallet (interno)", description = "Endpoint interno para crear una wallet")
     @PostMapping("/internal/wallets")
+    @Auditable(action = "CREATE WALLET", resource = "INTERNAL")
     public ResponseEntity<ApiResponse<Void>> createWallet(@Valid @RequestBody CreateWalletRequest request) {
         log.info("Solicitud de creación de wallet para userId: {}", request.userId());
         walletService.createWalletIfNotExists(request.userId());
@@ -106,6 +115,7 @@ public class WalletController {
     @Operation(summary = "Obtener mi wallet", description = "Devuelve la wallet del usuario autenticado")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
+    @Auditable(action = "GET MY WALLET", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> getMyWallet(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = extractUserId(jwt);
         log.info("Solicitud de wallet propia para userId: {}", userId);

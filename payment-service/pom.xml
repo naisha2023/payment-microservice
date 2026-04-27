@@ -40,6 +40,22 @@
             <version>2.5.0</version>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.zipkin.reporter2</groupId>
+            <artifactId>zipkin-reporter-brave</artifactId>
+        </dependency> 
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-hc5</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.example</groupId>
             <artifactId>shared</artifactId>
             <version>1.0.0</version>

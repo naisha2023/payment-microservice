@@ -131,16 +131,20 @@ public class AuthService implements AuthServiceInterface {
      */
     @Transactional(readOnly = true)
     public UserResponse getAuthenticatedUser(String tokenValue) {
-        String cleanToken = tokenValue.replace(AuthConstants.BEARER_PREFIX, "").trim();
+        if (tokenValue == null || !tokenValue.startsWith(AuthConstants.BEARER_PREFIX)) {
+            throw new AuthUnauthorizedException(AuthConstants.ERROR_TOKEN_INVALID_OR_EXPIRED);
+        }
 
-        validateAccessToken(cleanToken);
+        String cleanToken = tokenValue
+                .substring(AuthConstants.BEARER_PREFIX.length())
+                .trim();
+
+        if (!jwtService.isTokenValid(cleanToken)) {
+            throw new AuthUnauthorizedException(AuthConstants.ERROR_TOKEN_INVALID_OR_EXPIRED);
+        }
 
         String email = jwtService.extractUsername(cleanToken);
         Users user = findUserByEmail(email);
-
-        if (!jwtService.isTokenValid(cleanToken, toUserDetails(user))) {
-            throw new AuthUnauthorizedException(AuthConstants.ERROR_TOKEN_INVALID_OR_EXPIRED);
-        }
 
         return toUserResponse(user);
     }

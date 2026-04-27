@@ -112,8 +112,17 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public boolean isTokenValid(String token, UserDetails user) {
-        return user.getUsername().equals(extractUsername(token)) && !isTokenExpired(token);
+    public boolean isTokenValid(String token) {
+        try {
+            return !isTokenExpired(token) && isAccessToken(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isAccessToken(String token) {
+        String type = extractClaim(token, claims -> (String) claims.get("type"));
+        return "access".equals(type);
     }
 
     public boolean isTokenExpired(String token) {

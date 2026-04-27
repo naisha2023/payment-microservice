@@ -34,6 +34,10 @@ spring:
         health-check-path: /actuator/health
         health-check-interval: 10s
         hostname: ${spring.application.name}
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId
+
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -41,6 +45,14 @@ springdoc:
     path: /swagger-ui.html
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: b3
+    export:
+      zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans
   endpoints:
     web:
       exposure:

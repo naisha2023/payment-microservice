@@ -10,8 +10,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -24,7 +22,18 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        return path.startsWith("/auth/internal/")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/swagger-ui")
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/actuator/health")
+                || path.equals("/actuator/info");
+    }
 
     @Override
     protected void doFilterInternal(
@@ -43,43 +52,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            String username = jwtService.extractUsername(token);
-            String role = jwtService.extractClaim(token, claims -> (String) claims.get("role"));
+            // 🔥 Validación básica (firma + expiración)
+            if (!jwtService.isTokenValid(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String userId = jwtService.extractClaim(token, c -> (String) c.get("userId"));
+            String email = jwtService.extractUsername(token);
+            String role = jwtService.extractClaim(token, c -> (String) c.get("role"));
 
-                if ("SYSTEM_SERVICE".equals(role)) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    username,
-                                    null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_SERVICE"))
-                            );
+            if (userId != null && role != null &&
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                    if (jwtService.isTokenValid(token, userDetails)) {
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails,
-                                        null,
-                                        userDetails.getAuthorities()
-                                );
-
-                        authentication.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request)
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                email, // principal
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
                         );
 
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    }
-                }
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+
         } catch (Exception e) {
             logger.error("JWT authentication error", e);
         }

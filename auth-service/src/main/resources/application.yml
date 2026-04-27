@@ -2,25 +2,24 @@ server:
   port: 8081
   address: 0.0.0.0
   ssl:
-    enabled: false
+    enabled: true
+    key-store: file:/app/certs/server.p12
+    key-store-password: ${SSL_PASSWORD}
+    key-store-type: PKCS12
+    trust-store: file:/app/certs/truststore.p12
+    trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+    trust-store-type: PKCS12
+    client-auth: want
 
 spring:
-  cloud:
-    consul:
-      host: consul
-      port: 8500
-      discovery:
-        register: true
-        health-check-path: /actuator/health
-        health-check-interval: 10s
-        hostname: ${spring.application.name}
   application:
     name: auth-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
+    url: jdbc:postgresql://postgres:5432/auth_db
     username: user_admin
     password: root_password
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -28,11 +27,22 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
   rabbitmq:
     host: rabbitmq
     port: 5672
     username: admin
-    password: naisha2106
+    password: admin123
+
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+      discovery:
+        register: true
+        scheme: https
+        health-check-url: https://${spring.application.name}:${server.port}/actuator/health
+        health-check-tls-skip-verify: true
 
 springdoc:
   api-docs:
@@ -45,17 +55,25 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET}
 
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: b3
+    export:
+      zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
 logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.web: DEBUG
-    com.example.auth_service: DEBUG
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway
-  endpoint:
-    gateway:
-      enabled: true
+    org.example.authservice: DEBUG
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}] "

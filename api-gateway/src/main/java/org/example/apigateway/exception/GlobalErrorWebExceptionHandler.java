@@ -1,7 +1,5 @@
 package org.example.apigateway.exception;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.webflux.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
@@ -13,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -35,14 +34,9 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
 
         Map<String, Object> errorResponse = buildErrorResponse(ex, status);
 
-        try {
-            byte[] bytes = objectMapper.writeValueAsBytes(errorResponse);
-            DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
-            return exchange.getResponse().writeWith(Mono.just(buffer));
-        } catch (JsonProcessingException e) {
-            log.error("Error al serializar respuesta de error", e);
-            return exchange.getResponse().setComplete();
-        }
+        byte[] bytes = objectMapper.writeValueAsBytes(errorResponse);
+        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
+        return exchange.getResponse().writeWith(Mono.just(buffer));
     }
 
     private HttpStatusCode determineHttpStatus(Throwable ex) {

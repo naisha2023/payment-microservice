@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.shared.dtos.ApiResponse;
+import org.example.shared.interfaces.Auditable;
 import org.example.paymentservice.dto.CreatePaymentRequest;
 import org.example.paymentservice.dto.PaymentResponse;
 import org.example.paymentservice.service.PaymentService;
@@ -36,6 +37,7 @@ public class PaymentController {
     @Operation(summary = "Crear pago", description = "Crea un nuevo pago y reserva fondos en la wallet")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
+    @Auditable(action = "CREATE PAYMENT", resource = "PAYMENT")
     public ResponseEntity<ApiResponse<PaymentResponse>> create(
             @Valid @RequestBody CreatePaymentRequest request,
             @AuthenticationPrincipal Jwt jwt,
@@ -51,6 +53,7 @@ public class PaymentController {
     @Operation(summary = "Confirmar pago", description = "Confirma un pago y deduce los fondos de la wallet")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{paymentId}/confirm")
+    @Auditable(action = "CONFIRM PAYMENT", resource = "PAYMENT")
     public ResponseEntity<ApiResponse<PaymentResponse>> confirm(
             @PathVariable UUID paymentId,
             @AuthenticationPrincipal Jwt jwt,
@@ -64,6 +67,7 @@ public class PaymentController {
     @Operation(summary = "Cancelar pago", description = "Cancela un pago y libera los fondos reservados")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{paymentId}/cancel")
+    @Auditable(action = "CANCEL PAYMENT", resource = "PAYMENT")
     public ResponseEntity<ApiResponse<PaymentResponse>> cancel(
             @PathVariable UUID paymentId,
             @AuthenticationPrincipal Jwt jwt,
@@ -77,6 +81,7 @@ public class PaymentController {
     @Operation(summary = "Obtener pago por ID", description = "Devuelve la información de un pago específico")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{paymentId}")
+    @Auditable(action = "GET PAYMENT", resource = "PAYMENT")
     public ResponseEntity<ApiResponse<PaymentResponse>> getById(
             @PathVariable UUID paymentId,
             @AuthenticationPrincipal Jwt jwt) {
@@ -88,6 +93,7 @@ public class PaymentController {
     @Operation(summary = "Obtener mis pagos", description = "Devuelve todos los pagos del usuario autenticado")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
+    @Auditable(action = "GET MY PAYMENTS", resource = "PAYMENT")
     public ResponseEntity<ApiResponse<List<PaymentResponse>>> myPayments(@AuthenticationPrincipal Jwt jwt) {
         log.info("Solicitud de lista de pagos del usuario");
         List<PaymentResponse> payments = paymentService.getMyPayments(jwt);

@@ -8,10 +8,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.example.paymentservice.config.FeignConfig;
 import org.example.paymentservice.dto.WalletOperationRequest;
 import org.example.paymentservice.dto.WalletResponse;
 
-@FeignClient(name = "wallet-service")
+@FeignClient(
+    name = "wallet-service",
+    url = "${wallet-service.url}",
+    configuration = FeignConfig.class
+)
 public interface WalletClient {
         @PostMapping("/wallets/{userId}/reserve") 
         void reserve(

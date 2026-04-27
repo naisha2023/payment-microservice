@@ -1,6 +1,13 @@
 server:
     port: 8082
-
+    ssl:
+        key-store: file:/app/certs/wallet.p12
+        key-store-password: ${SSL_PASSWORD}
+        key-store-type: PKCS12
+        trust-store: file:/app/certs/truststore.p12
+        trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+        trust-store-type: PKCS12
+        client-auth: want
 jwt:
     secret: ${JWT_SECRET}
 spring:
@@ -10,16 +17,11 @@ spring:
             port: 8500
             discovery:
                 register: true
-                health-check-path: /actuator/health
-                health-check-interval: 10s
-                hostname: ${spring.application.name}
+                scheme: https
+                health-check-url: https://wallet-service:8082/actuator/health
+                health-check-tls-skip-verify: true
     application:
         name: wallet-service
-    security:
-        oauth2:
-            resourceserver:
-                jwt:
-                    issuer-uri:
     rabbitmq:
         host: rabbitmq
         port: 5672
@@ -35,10 +37,22 @@ springdoc:
     path: /swagger-ui.html
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway
-  endpoint:
-    health:
-      show-details: always
+    tracing:
+        sampling:
+            probability: 1.0
+        propagation:
+            type: b3
+        export:
+            zipkin:
+                endpoint: http://zipkin:9411/api/v2/spans  
+    
+    endpoints:
+        web:
+            exposure:
+                include: health,info,metrics,prometheus
+    endpoint:
+        health:
+            show-details: always
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId

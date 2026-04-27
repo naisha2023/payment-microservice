@@ -1,6 +1,19 @@
 server:
   port: 8083
+  ssl:
+    key-store: file:/app/certs/payment.p12
+    key-store-password: ${SSL_PASSWORD}
+    key-store-type: PKCS12
+    trust-store: file:/app/certs/truststore.p12
+    trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+    trust-store-type: PKCS12
+    client-auth: need
 
+mtls:
+  key-store: file:/app/certs/payment.p12
+  key-store-password: ${SSL_PASSWORD}
+  trust-store: file:/app/certs/truststore.p12
+  trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
 spring:
   datasource:
     url: jdbc:postgresql://payment-db:5432/payment_db
@@ -13,10 +26,10 @@ spring:
       host: consul
       port: 8500
       discovery:
+        scheme: https
+        health-check-url: https://payment-service:8083/actuator/health
+        health-check-tls-skip-verify: true
         register: true
-        health-check-path: /actuator/health
-        health-check-interval: 10s
-        hostname: ${spring.application.name}
   rabbitmq:
     host: rabbitmq
     port: 5672
@@ -24,7 +37,19 @@ spring:
     password: naisha2106
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: b3
+    export:
+      zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans    
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId

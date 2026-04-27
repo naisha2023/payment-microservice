@@ -1,22 +1,43 @@
 server:
   port: 8085
+  ssl:
+    key-store: file:/app/certs/client.p12
+    key-store-password: ${SSL_PASSWORD}
+    trust-store: file:/app/certs/truststore.p12
+    trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+
+mtls:
+  key-store: file:/app/certs/client.p12
+  key-store-password: ${SSL_PASSWORD}
+  trust-store: file:/app/certs/truststore.p12
+  trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+
+auth-service:
+  base-url: https://auth-service:8081
 
 spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/notification_db
+    username: user_admin
+    password: root_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   mail:
     host: smtp.gmail.com
     port: 587
-    username: gsmarin85@gmail.com
-    password: Naisha@2014
+    username: leo.santi.cuba@gmail.com
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-  datasource:
-    url: jdbc:postgresql://notification-db:5432/notification_db
-    username: user_admin
-    password: root_password
   application:
     name: notification-service
   cloud:
@@ -25,20 +46,28 @@ spring:
       port: 8500
       discovery:
         register: true
-        health-check-path: /actuator/health
-        health-check-interval: 10s
-        hostname: ${spring.application.name}
+        scheme: https
+        health-check-url: https://notification-service:8085/actuator/health
+        health-check-tls-skip-verify: true
   rabbitmq:
     host: rabbitmq
     port: 5672
     username: admin
-    password: naisha2106
-
-auth-service:
-  base-url: http://auth-service:8081
+    password: admin123
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: b3
+    export:
+      zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans
   endpoints:
     web:
       exposure:
-        include: health,info
+                include: health,info,metrics,prometheus
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId

@@ -152,13 +152,14 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse credit(UUID userId, CreditRequest request) {
         log.info("Acreditando fondos para usuario: {}, monto: {}, paymentId: {}",
-                userId, request.amount(), request.paymentId());
+                userId, request.amount(), request.description());
 
         Wallet wallet = findWalletByUserId(userId);
 
+        UUID operationId = UUID.randomUUID();
         WalletOperationResult result = executeIdempotentOperation(
             wallet.getId(),
-            request.paymentId(),
+            operationId,
             WalletOperationType.CREDIT,
             request.amount(),
             w -> w.setBalance(w.getBalance().add(request.amount()))
@@ -171,7 +172,7 @@ public class WalletServiceImpl implements WalletService {
                 UUID.randomUUID(),
                 wallet.getId(),
                 userId,
-                request.paymentId(),
+                operationId,
                 request.amount(),
                 wallet.getCurrency(),
                 "CREDIT"

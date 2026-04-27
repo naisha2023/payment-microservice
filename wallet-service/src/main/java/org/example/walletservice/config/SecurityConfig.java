@@ -1,76 +1,66 @@
 package org.example.walletservice.config;
 
-import lombok.RequiredArgsConstructor;
-
-import java.util.List;
-
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
-        @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/wallet/swagger-ui.html",
-                                "/wallet/swagger-ui/**",
-                                "/wallet/v3/api-docs/**",
-                                "/internal/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .x509(x509 -> x509
+                        .x509PrincipalExtractor(cert -> {
+                            String dn = cert.getSubjectX500Principal().getName();
+
+                            for (String part : dn.split(",")) {
+                                if (part.trim().startsWith("CN=")) {
+                                    return part.trim().substring(3);
+                                }
+                            }
+
+                            throw new UsernameNotFoundException("CN no encontrado en certificado");
+                        })
+                        .userDetailsService(mtlsUserDetailsService())
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                                "/actuator/health/**",
+                                "/actuator/info",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**"
+                ).permitAll()
+                .anyRequest().hasRole("SYSTEM_SERVICE")
+            )
+            .build();
+    }
 
-        return http.build();
-        }
-
-        @Bean
-        public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        SecretKey key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).build();
-        }
-
-        @Bean
-        public JwtAuthenticationConverter jwtAuthenticationConverter() {
-                JwtGrantedAuthoritiesConverter converter = new JwtGrantedAuthoritiesConverter();
-                converter.setAuthoritiesClaimName("role");
-                converter.setAuthorityPrefix("ROLE_");
-
-                JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
-                jwtConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-                        String role = jwt.getClaimAsString("role");
-                        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                });
-
-                return jwtConverter;
-        }
+    @Bean
+    @Qualifier("mtlsUserDetailsService")
+    public UserDetailsService mtlsUserDetailsService() {
+        return cn -> {
+            if ("payment-service".equals(cn)) {
+                return User.withUsername(cn)
+                    .password("")
+                    .roles("SYSTEM_SERVICE")
+                    .build();
+            }
+            throw new UsernameNotFoundException("Certificado no autorizado: " + cn);
+        };
+    }
 }

@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @FeignClient(
     name = "auth-service",
-    configuration = FeignConfig.class
+    configuration = FeignConfig.class,
+    url = "${auth-service.base-url}"
 )
 public interface AuthClient {
 

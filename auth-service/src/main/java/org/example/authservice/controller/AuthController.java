@@ -7,6 +7,7 @@ import org.example.authservice.security.CustomUserDetails;
 import org.example.authservice.service.AuthService;
 import org.example.shared.dtos.ApiResponse;
 import org.example.shared.dtos.UserResponse;
+import org.example.shared.interfaces.Auditable;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,6 +36,7 @@ public class AuthController {
 
     @Operation(summary = "Registrar nuevo usuario", description = "Crea una nueva cuenta de usuario en el sistema")
     @PostMapping("/register")
+    @Auditable(action = "REGISTER", resource = "AUTH")
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
         log.info("Solicitud de registro recibida para email: {}", request.email());
         String message = authService.register(request);
@@ -45,6 +47,7 @@ public class AuthController {
 
     @Operation(summary = "Iniciar sesión", description = "Autentica un usuario y devuelve tokens de acceso")
     @PostMapping("/login")
+    @Auditable(action = "LOGIN", resource = "AUTH")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         log.info("Solicitud de login recibida para email: {}", request.email());
         AuthResponse response = authService.login(request);
@@ -53,6 +56,7 @@ public class AuthController {
 
     @Operation(summary = "Refrescar token", description = "Genera un nuevo par de tokens usando un refresh token válido")
     @PostMapping("/refresh")
+    @Auditable(action = "LOGIN", resource = "AUTH")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshRequest request) {
         log.info("Solicitud de refresh token recibida");
         AuthResponse response = authService.refreshToken(request);
@@ -62,6 +66,7 @@ public class AuthController {
     @Operation(summary = "Obtener información del usuario actual", description = "Devuelve los datos del usuario autenticado")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
+    @Auditable(action = "USER INFO", resource = "AUTH")
     public ResponseEntity<ApiResponse<UserInfo>> me(@AuthenticationPrincipal CustomUserDetails user) {
         if (user == null) {
             log.warn("Intento de acceso a /me sin autenticación");
@@ -81,6 +86,7 @@ public class AuthController {
     @Operation(summary = "Cerrar sesión", description = "Revoca el refresh token del usuario")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/logout")
+    @Auditable(action = "LOGOUT", resource = "AUTH")
     public ResponseEntity<ApiResponse<String>> logout(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails user) {
             log.info("Solicitud de logout para usuario: {}", user.getId());
@@ -98,6 +104,7 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/change-role")
+    @Auditable(action = "CHANGE ROLE", resource = "AUTH")
     public ResponseEntity<ApiResponse<String>> changeRole(@Valid @RequestBody ChangeRoleRequest request) {
         log.info("Solicitud de cambio de rol para usuario: {} a rol: {}", request.userId(), request.newRole());
         String message = authService.changeRole(request.userId(), request.newRole());
@@ -108,6 +115,7 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/findUserByEmail/{email}")
+    @Auditable(action = "FIND USER BY EMAIL", resource = "AUTH")
     public ResponseEntity<ApiResponse<UserResponse>> findUserByEmail(@PathVariable String email) {
         log.info("Búsqueda de usuario por email: {}", email);
         UserResponse user = authService.getUserByEmail(email);
@@ -118,6 +126,7 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/getAllUsers")
+    @Auditable(action = "GET ALL USERS", resource = "AUTH")
     public ResponseEntity<ApiResponse<Iterable<UserResponse>>> getAllUsers() {
         log.info("Solicitud de lista de todos los usuarios");
         Iterable<UserResponse> users = authService.getAllUsers();
@@ -128,6 +137,7 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/getAllRoles")
+    @Auditable(action = "GET ALL ROLES", resource = "AUTH")
     public ResponseEntity<ApiResponse<Iterable<RoleResponse>>> getAllRoles() {
         log.info("Solicitud de lista de todos los roles");
         Iterable<RoleResponse> roles = authService.getAllRoles();
@@ -138,6 +148,7 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_SERVICE')")
     @GetMapping("/users/{userId}")
+    @Auditable(action = "FIND USER BY ID", resource = "AUTH")
     public ResponseEntity<ApiResponse<UserResponse>> findUserById(@PathVariable UUID userId) {
         log.info("Finding user by id: {}", userId);
         UserResponse user = authService.getUserById(userId);
@@ -145,6 +156,7 @@ public class AuthController {
     }
 
     @PostMapping("/internal/token")
+    @Auditable(action = "GENERATE SERVICE TOKEN", resource = "AUTH")
     public ResponseEntity<String> generateServiceToken() {
         String token = authService.generateServiceToken();
 

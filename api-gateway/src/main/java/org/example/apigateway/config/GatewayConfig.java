@@ -2,6 +2,10 @@ package org.example.apigateway.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
+import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -61,5 +65,58 @@ public class GatewayConfig {
                     .then(Mono.fromRunnable(() -> exchange.getResponse().getHeaders()
                             .add("X-Correlation-ID", finalCorrelationId)));
         };
+    }
+
+    @Bean
+    public RouteLocator routes(RouteLocatorBuilder builder) {
+        return builder.routes()
+            .route("auth-service", r -> r
+                    .path("/api/auth/**")
+                    .filters(f -> f
+                        .stripPrefix(1)
+                        .requestRateLimiter(c -> c
+                            .setRateLimiter(redisRateLimiter())
+                            .setKeyResolver(userKeyResolver())
+                        )
+                        .addRequestHeader("X-Gateway-Source", "api-gateway")
+                    )
+                    .uri("lb://auth-service")
+                )
+            .route("wallet-service", r -> r
+                    .path("/api/wallets/**")
+                    .filters(f -> f
+                        .stripPrefix(1)
+                        .requestRateLimiter(c -> c
+                            .setRateLimiter(redisRateLimiter())
+                            .setKeyResolver(userKeyResolver())
+                        )
+                    )
+                    .uri("lb://wallet-service")
+                )
+                .route("payment-service", r -> r
+                    .path("/api/payments/**")
+                    .filters(f -> f
+                        .stripPrefix(1)
+                        .requestRateLimiter(c -> c
+                            .setRateLimiter(redisRateLimiter())
+                            .setKeyResolver(userKeyResolver())
+                        )
+                    )
+                    .uri("lb://payment-service")
+                )
+                .build();
+    }
+
+    @Bean
+    public RedisRateLimiter redisRateLimiter() {
+        return new RedisRateLimiter(10, 20); // 10 req/s, burst 20
+    }
+
+    @Bean
+    public KeyResolver userKeyResolver() {
+        // Limitar por X-User-Id (viene del JwtAuthFilter)
+        return exchange -> Mono.justOrEmpty(
+            exchange.getRequest().getHeaders().getFirst("X-User-Id")
+        ).defaultIfEmpty("anonymous");
     }
 }
