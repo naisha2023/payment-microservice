@@ -53,6 +53,10 @@ management:
     endpoint:
         health:
             show-details: always
+    prometheus:
+        metrics:
+            export:
+                enabled: true
 logging:
   pattern:
     correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId

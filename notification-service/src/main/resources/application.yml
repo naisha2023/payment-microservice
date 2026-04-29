@@ -68,6 +68,10 @@ management:
     web:
       exposure:
                 include: health,info,metrics,prometheus
+  prometheus:
+        metrics:
+            export:
+                enabled: true
 logging:
   pattern:
     correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId
