@@ -1,11 +1,5 @@
 server:
   port: 8085
-  ssl:
-    key-store: file:/app/certs/client.p12
-    key-store-password: ${SSL_PASSWORD}
-    trust-store: file:/app/certs/truststore.p12
-    trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
-
 mtls:
   key-store: file:/app/certs/client.p12
   key-store-password: ${SSL_PASSWORD}
@@ -46,8 +40,8 @@ spring:
       port: 8500
       discovery:
         register: true
-        scheme: https
-        health-check-url: https://notification-service:8085/actuator/health
+        scheme: http
+        health-check-url: http://notification-service:8085/actuator/health
         health-check-tls-skip-verify: true
   rabbitmq:
     host: rabbitmq

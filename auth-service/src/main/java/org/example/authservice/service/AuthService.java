@@ -73,6 +73,12 @@ public class AuthService implements AuthServiceInterface {
         return AuthConstants.SUCCESS_USER_REGISTERED;
     }
 
+    public String getFullName(UUID userId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(AuthConstants.ERROR_USER_NOT_FOUND));
+        return user.getFullName();
+    }
+
     /**
      * Autentica un usuario y genera tokens de acceso
      */

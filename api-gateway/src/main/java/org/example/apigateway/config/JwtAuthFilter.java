@@ -24,10 +24,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     // Rutas que no requieren JWT
     private static final List<String> PUBLIC_PATHS = List.of(
-        "/auth/login",
-        "/auth/register",
-        "/auth/refresh",
-        "/auth/internal/token"
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/auth/refresh",
+        "/api/auth/internal/token"
     );
 
     @Override
@@ -60,11 +60,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
             // Propagar info al servicio downstream
             ServerWebExchange mutatedExchange = exchange.mutate()
-                .request(exchange.getRequest().mutate()
-                    .header("X-User-Id", userId)
-                    .header("X-User-Role", role)
-                    .build())
-                .build();
+            .request(exchange.getRequest().mutate()
+                .header("X-User-Id", userId)
+                .header("X-User-Role", role)
+                .header("Authorization", authHeader)  // ← asegura que se reenvía
+                .build())
+            .build();
 
             return chain.filter(mutatedExchange);
 

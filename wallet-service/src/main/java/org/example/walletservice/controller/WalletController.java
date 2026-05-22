@@ -118,9 +118,7 @@ public class WalletController {
     @Auditable(action = "GET MY WALLET", resource = "WALLET")
     public ResponseEntity<ApiResponse<WalletResponse>> getMyWallet(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = extractUserId(jwt);
-        log.info("Solicitud de wallet propia para userId: {}", userId);
         WalletResponse wallet = walletService.getWallet(userId);
-        log.info("Wallet obtenida: {}", wallet);
         return ResponseEntity.ok(ApiResponse.success(wallet));
     }
 

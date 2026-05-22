@@ -24,19 +24,19 @@ spring:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:admin}
-    password: ${SPRING_RABBITMQ_PASSWORD:naisha2106}
+    password: ${SPRING_RABBITMQ_PASSWORD:admin123}
   cloud:
     consul:
-      host: ${SPRING_CLOUD_CONSUL_HOST:consul}
-      port: ${SPRING_CLOUD_CONSUL_PORT:8500}
+      host: consul
+      port: 8500
       discovery:
         register: true
         scheme: http
-        health-check-path: ledger-service:8084/actuator/health
+        health-check-url: http://${spring.application.name}:${server.port}/actuator/health
         health-check-interval: 10s
 logging:
   pattern:
-    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  
 
 springdoc:
   api-docs:
@@ -56,7 +56,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info, prometheus
+        include: health,info, prometheus, metrics
   endpoint:
     health:
       show-details: always

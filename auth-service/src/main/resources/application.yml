@@ -41,7 +41,7 @@ spring:
       discovery:
         register: true
         scheme: https
-        health-check-url: https://${spring.application.name}:${server.port}/actuator/health
+        health-check-url: https://auth-service:8081/actuator/health
         health-check-tls-skip-verify: true
 
 springdoc:
@@ -65,9 +65,9 @@ management:
       zipkin:
         endpoint: http://zipkin:9411/api/v2/spans
   prometheus:
-        metrics:
-            export:
-                enabled: true
+    metrics:
+      export:
+        enabled: true
 
   endpoints:
     web:

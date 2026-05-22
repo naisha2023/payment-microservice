@@ -74,11 +74,13 @@ public class AuthController {
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("No autenticado", null));
         }
-
+        String fullName = authService.getFullName(user.getId());
         UserInfo userInfo = new UserInfo(
                 user.getId(),
+                fullName,
                 user.getUsername(),
-                user.getRole());
+                user.getRole(),
+                user.isEnabled());
 
         return ResponseEntity.ok(ApiResponse.success(userInfo));
     }
@@ -166,6 +168,6 @@ public class AuthController {
     /**
      * DTO interno para información básica del usuario
      */
-    private record UserInfo(UUID userId, String email, String role) {
+    private record UserInfo(UUID userId,String fullName, String email, String role, boolean isEnabled) {
     }
 }

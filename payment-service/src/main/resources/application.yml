@@ -7,7 +7,7 @@ server:
     trust-store: file:/app/certs/truststore.p12
     trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
     trust-store-type: PKCS12
-    client-auth: need
+    client-auth: want
 
 mtls:
   key-store: file:/app/certs/payment.p12
@@ -34,7 +34,7 @@ spring:
     host: rabbitmq
     port: 5672
     username: admin
-    password: naisha2106
+    password: admin123
 
 management:
   tracing:
@@ -50,9 +50,9 @@ management:
       exposure:
         include: health,info,metrics,prometheus
   prometheus:
-        metrics:
-            export:
-                enabled: true
+    metrics:
+      export:
+        enabled: true
 
 logging:
   pattern:

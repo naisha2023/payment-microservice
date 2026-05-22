@@ -40,6 +40,7 @@ spring:
                 allowed-origins:
                   - "http://localhost:3000"     
                   - "http://localhost:4200"
+                  - "http://localhost:5173"
                 allowed-methods:
                   - GET
                   - POST
@@ -63,8 +64,8 @@ spring:
               filters:
                 - StripPrefix=1
 
-            - id: walletservice
-              uri: lb://walletservice
+            - id: wallet-service
+              uri: lb://wallet-service
               predicates:
                 - Path=/api/wallets/**
               filters:
@@ -95,6 +96,10 @@ management:
         endpoint: http://zipkin:9411/api/v2/spans                       # 👈 necesario en Spring Boot 4
 
 logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
   pattern:
     correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"  # 👈 logs con traceId
 
