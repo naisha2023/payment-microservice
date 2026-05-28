@@ -24,9 +24,16 @@ public class OutboxPublisher {
         for (var event : events) {
         try {
             rabbitTemplate.convertAndSend(
-                    RabbitConfig.EXCHANGE,
-                    event.getRoutingKey(),
-                    event.getPayload()
+                RabbitConfig.EXCHANGE,
+                event.getRoutingKey(),
+                event.getPayload(),
+                message -> {
+                    if (event.getCorrelationId() != null) {
+                        message.getMessageProperties()
+                                .setHeader("X-Correlation-ID", event.getCorrelationId());
+                    }
+                    return message;
+                }
             );
 
             event.setPublished(true);

@@ -9,7 +9,6 @@ server:
     trust-store: file:/app/certs/truststore.p12
     trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
     trust-store-type: PKCS12
-    client-auth: want
 
 spring:
   application:

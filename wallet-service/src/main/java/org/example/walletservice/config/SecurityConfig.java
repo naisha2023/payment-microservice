@@ -92,7 +92,7 @@ public class SecurityConfig {
 
         return cn -> {
 
-            if ("payment-service".equals(cn)) {
+            if ("payment-service".equals(cn) || "api-gateway".equals(cn)) {
 
                 return User.withUsername(cn)
                     .password("")

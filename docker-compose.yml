@@ -21,24 +21,30 @@ x-service-base: &service-base
       condition: service_healthy
 
 services:
+
   postgres:
     image: postgres:15-alpine
     container_name: postgres
     restart: unless-stopped
+
     environment:
       POSTGRES_USER: ${DB_USER:-user_admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-root_password}
       POSTGRES_DB: auth_db
+
     ports:
       - "5432:5432"
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user_admin} -d auth_db"]
       interval: 10s
       timeout: 5s
       retries: 10
+
     networks:
       - data-network
 
@@ -46,77 +52,97 @@ services:
     image: rabbitmq:4-management
     container_name: rabbitmq
     hostname: rabbitmq
+
     restart: unless-stopped
+
     ports:
       - "5672:5672"
       - "15672:15672"
+
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
+
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 10s
       timeout: 5s
       retries: 10
+
     networks:
       - messaging-network
 
   redis:
     image: redis:7-alpine
     container_name: redis
+
     restart: unless-stopped
+
     ports:
       - "6379:6379"
+
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+
     networks:
       - gateway-network
 
   consul:
     image: hashicorp/consul:1.20
     container_name: consul
+
     restart: unless-stopped
+
     ports:
       - "8500:8500"
+
     command: "agent -server -bootstrap -ui -client=0.0.0.0"
+
     healthcheck:
       test: ["CMD", "consul", "members"]
       interval: 10s
       timeout: 5s
       retries: 10
+
     networks:
       - services-network
 
   zipkin:
     image: openzipkin/zipkin:latest
     container_name: zipkin
+
     restart: unless-stopped
+
     ports:
       - "9411:9411"
+
     networks:
       - services-network
-      - monitoring-network 
-  
-  prometheus:                   # 👈 agregado
+      - monitoring-network
+
+  prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+
     restart: unless-stopped
+
     ports:
       - "9090:9090"
+
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
+
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.enable-lifecycle'
-    networks:
-      - services-network
-      - monitoring-network
+
     depends_on:
       - auth-service
       - wallet-service
@@ -125,103 +151,140 @@ services:
       - notification-service
       - api-gateway
 
-  grafana:                      # 👈 agregado
+    networks:
+      - services-network
+      - monitoring-network
+
+  grafana:
     image: grafana/grafana:latest
     container_name: grafana
+
     restart: unless-stopped
+
     ports:
       - "3000:3000"
+
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: false
+
     volumes:
       - grafana-data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning
-    networks:
-      - monitoring-network
+
     depends_on:
       - prometheus
       - zipkin
+      - loki
+
+    networks:
+      - monitoring-network
 
   auth-service:
     <<: *service-base
+
     build:
       context: .
       dockerfile: auth-service/Dockerfile
+
+    container_name: auth-service
+
     env_file:
       - .env
-    container_name: auth-service
+
     ports:
       - "8081:8081"
+
     environment:
       <<: [*db-env, *rabbitmq-env, *jwt-env]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+
+    volumes:
+      - ./certs/server.p12:/app/certs/server.p12:ro
+      - ./certs/truststore.p12:/app/certs/truststore.p12:ro
+
     networks:
       - services-network
       - data-network
       - messaging-network
-    volumes:
-      - ./certs/server.p12:/app/certs/server.p12
-      - ./certs/truststore.p12:/app/certs/truststore.p12
 
   wallet-service:
     <<: *service-base
+
     build:
       context: .
       dockerfile: wallet-service/Dockerfile
+
     container_name: wallet-service
-    ports:
-      - "8082:8082"
+
     env_file:
       - .env
+
+    ports:
+      - "8082:8082"
+
     environment:
       <<: [*db-env, *rabbitmq-env, *jwt-env]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wallet_db
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-    networks:
-      - services-network
-      - data-network
-      - messaging-network
+
     volumes:
       - ./certs/wallet.p12:/app/certs/wallet.p12
       - ./certs/truststore.p12:/app/certs/truststore.p12
 
-  payment-service:
-    <<: *service-base
-    build:
-      context: .
-      dockerfile: payment-service/Dockerfile
-    container_name: payment-service
-    ports:
-      - "8083:8083"
-    env_file:
-      - .env
-    environment:
-      <<: [*db-env, *rabbitmq-env, *jwt-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
-      SERVICES_WALLET_BASE_URL: https://wallet-service:8082
     networks:
       - services-network
       - data-network
       - messaging-network
+
+  payment-service:
+    <<: *service-base
+
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+
+    container_name: payment-service
+
+    env_file:
+      - .env
+
+    ports:
+      - "8083:8083"
+
+    environment:
+      <<: [*db-env, *rabbitmq-env, *jwt-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
+      SERVICES_WALLET_BASE_URL: https://wallet-service:8082
+
     volumes:
       - ./certs/payment.p12:/app/certs/payment.p12
       - ./certs/truststore.p12:/app/certs/truststore.p12
 
+    networks:
+      - services-network
+      - data-network
+      - messaging-network
+
   ledger-service:
     <<: *service-base
+
     build:
       context: .
       dockerfile: ledger-service/Dockerfile
+
     container_name: ledger-service
+
     ports:
       - "8084:8084"
+
     environment:
       <<: [*db-env, *rabbitmq-env, *jwt-env]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger_db
       SERVER_PORT: 8084
+
     networks:
       - services-network
       - data-network
@@ -229,41 +292,64 @@ services:
 
   notification-service:
     <<: *service-base
+
     build:
       context: .
       dockerfile: notification-service/Dockerfile
+
     container_name: notification-service
+
     env_file:
       - .env
+
     ports:
       - "8085:8085"
+
     environment:
       <<: [*db-env, *rabbitmq-env]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
-    networks:
-      - services-network
-      - data-network
-      - messaging-network
+
     volumes:
       - ./certs/client.p12:/app/certs/client.p12
       - ./certs/truststore.p12:/app/certs/truststore.p12
 
+    networks:
+      - services-network
+      - data-network
+      - messaging-network
+
   api-gateway:
     build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
+      context: /media/D_arquivos/fintech/fintech-gateway
+      dockerfile: Dockerfile
+
     container_name: api-gateway
     restart: unless-stopped
+
     ports:
-      - "8443:8443"
       - "8080:8080"
+
     env_file:
       - .env
+
     environment:
-      <<: *jwt-env
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      GATEWAY_CERT_PATH: /app/certs/gateway.crt
+      GATEWAY_KEY_PATH: /app/certs/gateway.key
+      GATEWAY_CLIENT_CERT_PATH: /app/certs/gateway.crt
+      GATEWAY_CLIENT_KEY_PATH: /app/certs/gateway.key
+      GATEWAY_CA_PATH: /app/certs/truststore.pem
+
+      GATEWAY_SERVER_CERT_PATH: /app/certs/gateway.crt
+      GATEWAY_SERVER_KEY_PATH: /app/certs/gateway.key
+
+    volumes:
+      - /media/D_arquivos/fintech/fintech-gateway/certs:/app/certs:ro
+
     depends_on:
       redis:
         condition: service_healthy
@@ -273,30 +359,64 @@ services:
         condition: service_started
       payment-service:
         condition: service_started
-      ledger-service:
-        condition: service_started
-      consul:
-        condition: service_healthy
+
     networks:
       - gateway-network
       - services-network
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    restart: unless-stopped
+
+    ports:
+      - "3100:3100"
+
     volumes:
-      - ./certs/gateway.p12:/app/certs/gateway.p12
-      - ./certs/truststore.p12:/app/certs/truststore.p12
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yml
+      - loki-data:/loki
+
+    command: -config.file=/etc/loki/local-config.yml
+
+    networks:
+      - monitoring-network
+
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    restart: unless-stopped
+
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    command: -config.file=/etc/promtail/config.yml
+
+    depends_on:
+      - loki
+
+    networks:
+      - monitoring-network
 
 volumes:
   postgres-data:
-  prometheus-data:    
+  prometheus-data:
   grafana-data:
-
+  loki-data:
 networks:
   gateway-network:
     driver: bridge
+
   services-network:
     driver: bridge
+
   data-network:
     driver: bridge
+
   messaging-network:
     driver: bridge
+
   monitoring-network:
     driver: bridge

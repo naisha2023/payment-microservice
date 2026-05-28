@@ -1,0 +1,2 @@
+subjectAltName = DNS:auth-service
+extendedKeyUsage = serverAuth, clientAuth

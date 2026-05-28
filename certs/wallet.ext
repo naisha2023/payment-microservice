@@ -1,0 +1,2 @@
+subjectAltName = DNS:wallet-service
+extendedKeyUsage = serverAuth, clientAuth

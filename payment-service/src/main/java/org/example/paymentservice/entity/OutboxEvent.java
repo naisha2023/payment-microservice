@@ -38,4 +38,7 @@ public class OutboxEvent {
 
     @Column(nullable = false)
     private String routingKey;
+
+    @Column(name = "correlation_id", length = 64)
+    private String correlationId;
 }

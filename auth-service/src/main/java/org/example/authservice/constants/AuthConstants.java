@@ -31,6 +31,7 @@ public final class AuthConstants {
     public static final String ERROR_INVALID_TOKEN_TYPE = "Tipo de token inválido";
     public static final String ERROR_TOKEN_EXPIRED_OR_REVOKED = "Token expirado o revocado";
     public static final String ERROR_TOKEN_INVALID_OR_EXPIRED = "Token inválido o expirado";
+    public static final String ERROR_UNAUTHORIZED = "No autorizado";
 
     // Mensajes de éxito
     public static final String SUCCESS_USER_REGISTERED = "Usuario registrado exitosamente";

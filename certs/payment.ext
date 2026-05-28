@@ -1,0 +1,2 @@
+subjectAltName = DNS:payment-service
+extendedKeyUsage = serverAuth, clientAuth

@@ -32,7 +32,8 @@ import org.example.authservice.enums.Role;
 import org.example.authservice.exception.AuthConflictException;
 import org.example.authservice.exception.AuthUnauthorizedException;
 import org.example.authservice.exception.ResourceNotFoundException;
-
+import org.example.authservice.exception.TokenExpiredException;
+import org.example.authservice.exception.TokenReusedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.example.authservice.repository.TokenRepository;
@@ -94,7 +95,7 @@ public class AuthService implements AuthServiceInterface {
         String accessToken = jwtService.generateAccessToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-        saveRefreshToken(user, refreshToken);
+        saveRefreshToken(user, refreshToken, UUID.randomUUID());
 
         log.info("Login exitoso para usuario: {}", user.getId());
         return new AuthResponse(
@@ -111,25 +112,38 @@ public class AuthService implements AuthServiceInterface {
     public AuthResponse refreshToken(RefreshRequest request) {
         log.info("Iniciando refresh de token");
 
-        RefreshToken existingToken = findRefreshToken(request.refreshToken());
-        validateRefreshToken(existingToken, request.refreshToken());
+        RefreshToken existing = tokenRepository.findByToken(request.refreshToken())
+            .orElseThrow(() -> new ResourceNotFoundException(AuthConstants.ERROR_TOKEN_NOT_FOUND));
 
-        revokeRefreshToken(existingToken);
+        // ── Detección de reutilización ───────────────────────────
+        if (existing.getIsRevoked()) {
+            log.warn("Token ya revocado reutilizado — posible robo. Invalidando familia: {}", existing.getFamily());
+            invalidateFamily(existing.getFamily());
+            throw new AuthUnauthorizedException(AuthConstants.ERROR_TOKEN_INVALID_OR_EXPIRED);
+        }
 
-        Users user = existingToken.getUser();
+        // ── Validaciones normales (tipo + expiración) ────────────
+        validateRefreshToken(existing, request.refreshToken());
+
+        // ── Rotación ─────────────────────────────────────────────
+        revokeRefreshToken(existing);
+
+        Users user = existing.getUser();
         UserDetails userDetails = toUserDetails(user);
 
-        String newAccessToken = jwtService.generateAccessToken(userDetails);
+        String newAccessToken  = jwtService.generateAccessToken(userDetails);
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
 
-        saveRefreshToken(user, newRefreshToken);
+        saveRefreshToken(user, newRefreshToken, existing.getFamily()); // misma familia
 
-        log.info("Token refrescado exitosamente para usuario: {}", user.getId());
+        log.info("Token rotado exitosamente para usuario: {}", user.getId());
+
         return new AuthResponse(
-                newAccessToken,
-                newRefreshToken,
-                AuthConstants.BEARER_PREFIX.trim(),
-                jwtService.getAccessTokenExpiresInSeconds());
+            newAccessToken,
+            newRefreshToken,
+            AuthConstants.BEARER_PREFIX.trim(),
+            jwtService.getAccessTokenExpiresInSeconds()
+        );
     }
 
     /**
@@ -176,13 +190,11 @@ public class AuthService implements AuthServiceInterface {
     @Transactional
     public String logout(UUID userId) {
         log.info("Cerrando sesión para usuario: {}", userId);
-
         Users user = findUserById(userId);
-        tokenRepository.findByUser(user).ifPresent(token -> {
-            token.setIsRevoked(true);
-            token.setStatus(AuthConstants.TOKEN_STATUS_REVOKED);
-            tokenRepository.save(token);
-        });
+
+        List<RefreshToken> tokens = tokenRepository.findAllByUser(user);
+        tokens.forEach(this::revokeRefreshToken);
+        tokenRepository.saveAll(tokens);
 
         log.info("Sesión cerrada exitosamente para usuario: {}", userId);
         return AuthConstants.SUCCESS_LOGOUT;
@@ -227,12 +239,6 @@ public class AuthService implements AuthServiceInterface {
         if (userRepository.findByEmail(email).isPresent()) {
             log.warn("Intento de registro con email duplicado: {}", email);
             throw new AuthConflictException(AuthConstants.ERROR_EMAIL_IN_USE);
-        }
-    }
-
-    private void validateAccessToken(String token) {
-        if (!AuthConstants.TOKEN_TYPE_ACCESS.equals(jwtService.extractTokenType(token))) {
-            throw new AuthUnauthorizedException(AuthConstants.ERROR_TOKEN_INVALID_OR_EXPIRED);
         }
     }
 
@@ -297,11 +303,6 @@ public class AuthService implements AuthServiceInterface {
                 .orElseThrow(() -> new ResourceNotFoundException(AuthConstants.ERROR_USER_NOT_FOUND));
     }
 
-    private RefreshToken findRefreshToken(String token) {
-        return tokenRepository.findByToken(token)
-                .orElseThrow(() -> new ResourceNotFoundException(AuthConstants.ERROR_TOKEN_NOT_FOUND));
-    }
-
     // ==================== Métodos privados de operaciones ====================
 
     private void authenticateUser(LoginRequest request) {
@@ -316,19 +317,20 @@ public class AuthService implements AuthServiceInterface {
         }
     }
 
-    private void saveRefreshToken(Users user, String token) {
-        RefreshToken refreshToken = tokenRepository.findByUser(user)
-                .orElseGet(RefreshToken::new);
+    private void invalidateFamily(UUID family) {
+        List<RefreshToken> familyTokens = tokenRepository.findAllByFamily(family);
+        familyTokens.forEach(t -> t.setIsRevoked(true));
+        tokenRepository.saveAll(familyTokens);
+    }
 
-        refreshToken.setUser(user);
-        refreshToken.setToken(token);
-        refreshToken.setCreatedAt(Instant.now());
-        refreshToken.setExpiresAt(Instant.now().plusSeconds(
-                60L * 60 * 24 * AuthConstants.REFRESH_TOKEN_EXPIRATION_DAYS));
-        refreshToken.setIsRevoked(false);
-        refreshToken.setStatus(AuthConstants.TOKEN_STATUS_ACTIVE);
-
-        tokenRepository.save(refreshToken);
+    private void saveRefreshToken(Users user, String token, UUID family) {
+        RefreshToken rt = new RefreshToken();
+        rt.setUser(user);
+        rt.setToken(token);
+        rt.setFamily(family);
+        rt.setExpiresAt(Instant.now().plusSeconds(jwtService.getAccessTokenExpiresInSeconds()));
+        rt.setIsRevoked(false);
+        tokenRepository.save(rt);
     }
 
     private void revokeRefreshToken(RefreshToken token) {

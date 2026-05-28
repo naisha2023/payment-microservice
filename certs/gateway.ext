@@ -1,0 +1,2 @@
+subjectAltName = DNS:api-gateway
+extendedKeyUsage = serverAuth, clientAuth

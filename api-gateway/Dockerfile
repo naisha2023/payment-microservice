@@ -3,7 +3,6 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 COPY pom.xml .
-COPY api-gateway ./api-gateway
 COPY auth-service ./auth-service
 COPY wallet-service ./wallet-service
 COPY shared ./shared

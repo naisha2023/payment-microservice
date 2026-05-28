@@ -35,7 +35,15 @@ public class PaymentFailureService {
 
         paymentRepository.save(payment);
 
-        log.info("Pago {} marcado como FAILED correctamente", paymentId);
+        log.error(
+    "payment_failed paymentId={} userId={} amount={} currency={} reason={}",
+            payment.getId(),
+            payment.getUserId(),
+            payment.getAmount(),
+            payment.getCurrency(),
+            ex.getMessage(),
+            ex
+        );
     }
 
     private String truncate(String value, int maxLength) {

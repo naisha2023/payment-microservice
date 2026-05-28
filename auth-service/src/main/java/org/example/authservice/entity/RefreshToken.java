@@ -21,7 +21,7 @@ public class RefreshToken { // CamelCase en el nombre de la clase (estándar Jav
     private UUID id;
 
     // Relación directa con tu entidad Users
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY) // Lazy loading para evitar cargar el usuario innecesariamente
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private Users user;
 
@@ -39,4 +39,7 @@ public class RefreshToken { // CamelCase en el nombre de la clase (estándar Jav
 
     @Column(nullable = false)
     private Boolean isRevoked = false;
+
+    @Column(nullable = false)
+    private UUID family;
 }

@@ -96,4 +96,39 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = ApiResponse.error(message, errorDetails);
         return ResponseEntity.status(status).body(response);
     }
+
+    public ResponseEntity<ApiResponse<Void>> handleInvalidToken( HttpStatus status, String message) {
+        ApiResponse.ErrorDetails errorDetails = ApiResponse.ErrorDetails.builder()
+            .code(status.value())
+            .type(status.getReasonPhrase())
+            .details(message)
+            .build();
+        ApiResponse<Void> response = ApiResponse.error(message, errorDetails);
+        log.warn("Token inválido: {}", message);
+        return ResponseEntity.status(status)
+            .body(response);
+    }
+
+    public ResponseEntity<ApiResponse<Void>> handleTokenReused( HttpStatus status, String message) {
+        log.warn("Token reutilizado: {}", message);
+        ApiResponse.ErrorDetails errorDetails = ApiResponse.ErrorDetails.builder()
+            .code(status.value())
+            .type(status.getReasonPhrase())
+            .details(message)
+            .build();
+        ApiResponse<Void> response = ApiResponse.error(message, errorDetails);
+        return ResponseEntity.status(status)
+            .body(response);
+    }
+
+    public ResponseEntity<ApiResponse<Void>> handleTokenExpired(HttpStatus status, String message) {
+        ApiResponse.ErrorDetails errorDetails = ApiResponse.ErrorDetails.builder()
+            .code(status.value())
+            .type(status.getReasonPhrase())
+            .details(message)
+            .build();
+        ApiResponse<Void> response = ApiResponse.error(message, errorDetails);
+        return ResponseEntity.status(status)
+            .body(response);
+    }
 }
