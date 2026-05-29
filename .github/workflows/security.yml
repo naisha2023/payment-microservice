@@ -1,0 +1,71 @@
+name: Security
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Maven Dependency Scan
+        run: mvn org.owasp:dependency-check-maven:check -DskipTests
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Trivy payment-service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-payment-service:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Trivy auth-service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-auth-service:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Trivy wallet-service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-wallet-service:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Trivy ledger-service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-ledger-service:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Trivy notification-service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-notification-service:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Trivy api-gateway
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: wallet-service-root-api-gateway:latest
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1      
