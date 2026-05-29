@@ -42,6 +42,7 @@ jobs:
       - name: Scan repository filesystem
         run: |
           trivy fs \
+            --scanners vuln \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --ignore-unfixed \
@@ -51,49 +52,19 @@ jobs:
         run: docker compose build
 
       - name: Trivy payment-service
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-payment-service:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-payment-service:latest
 
       - name: Trivy auth-service
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-auth-service:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-auth-service:latest
 
       - name: Trivy wallet-service
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-wallet-service:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-wallet-service:latest
 
       - name: Trivy ledger-service
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-ledger-service:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-ledger-service:latest
 
       - name: Trivy notification-service
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-notification-service:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-notification-service:latest
 
       - name: Trivy api-gateway
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: wallet-service-root-api-gateway:latest
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: 1      
+        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-api-gateway:latest
