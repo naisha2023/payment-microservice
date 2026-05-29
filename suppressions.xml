@@ -9,4 +9,13 @@
         <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer-registry-prometheus@.*$</packageUrl>
         <cve>CVE-2026-42154</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+        False positive: CVE-2025-7962 affects Angus Mail.
+        This suppression applies only to org.eclipse.angus:angus-activation,
+        which provides Jakarta Activation.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@.*$</packageUrl>
+        <cve>CVE-2025-7962</cve>
+    </suppress>
 </suppressions>
