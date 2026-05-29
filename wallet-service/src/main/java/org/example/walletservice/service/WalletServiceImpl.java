@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.shared.enums.AccountType;
 import org.example.shared.event.WalletCreatedEvent;
-import org.example.shared.event.WalletDebitConfirmedEvent;
+import org.example.shared.event.WalletDebitConfirmedEvent; 
 import org.example.shared.event.WalletFundedEvent;
 import org.example.shared.event.WalletReleaseFundedEvent;
 import org.example.walletservice.constants.WalletConstants;
@@ -52,15 +52,25 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public WalletResponse getWallet(UUID userId) {
-        log.info("Obteniendo wallet por userId: {}", userId);
         Wallet wallet = findWalletByUserId(userId);
+        log.info(
+            "get wallet walletId={} userId={}",
+            wallet.getId(),
+            wallet.getUserId()
+        );
         return toResponse(wallet);
     }
 
     @Override
-    public BalanceResponse getBalance(UUID userId) {
-        log.info("Obteniendo balance para usuario: {}", userId);
+    public BalanceResponse getBalance(UUID userId) {        
         Wallet wallet = findWalletByUserId(userId);
+        log.info("Obteniendo balance para usuario: userId{}",
+            wallet.getUserId(),
+            wallet.getId(),
+            wallet.getBalance(),
+            wallet.getReservedBalance(),
+            wallet.availableBalance()
+        );
         return new BalanceResponse(
                 wallet.getId(),
                 wallet.getBalance(),
@@ -72,7 +82,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse reserve(UUID userId, ReserveFundsRequest request) {
         log.info("Reservando fondos para usuario: {}, monto: {}, paymentId: {}",
-                userId, request.amount(), request.paymentId());
+            userId, request.amount(), request.paymentId());
 
         Wallet wallet = findWalletByUserId(userId);
 
@@ -89,7 +99,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse release(UUID userId, ReleaseFundsRequest request) {
         log.info("Liberando fondos para usuario: {}, monto: {}, paymentId: {}",
-                userId, request.amount(), request.paymentId());
+            userId, request.amount(), request.paymentId());
 
         Wallet wallet = findWalletByUserId(userId);
 
@@ -152,7 +162,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse credit(UUID userId, CreditRequest request) {
         log.info("Acreditando fondos para usuario: {}, monto: {}, paymentId: {}",
-                userId, request.amount(), request.description());
+            userId, request.amount(), request.description());
 
         Wallet wallet = findWalletByUserId(userId);
 
