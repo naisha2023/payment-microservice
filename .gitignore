@@ -41,3 +41,8 @@ build/
 
 .env
 **/src/main/resources/certs/
+effective-pom.xml
+deps.txt
+*.sbom.json
+dependency-check-report.*
+*-sbom.json

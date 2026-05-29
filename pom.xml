@@ -16,10 +16,10 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>shared</module>
         <module>auth-service</module>
         <module>wallet-service</module>
-        <module>payment-service</module>
-        <module>shared</module>
+        <module>payment-service</module>        
         <module>ledger-service</module>
         <module>notification-service</module>
     </modules>

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   security:
     runs-on: ubuntu-latest
@@ -17,7 +20,7 @@ jobs:
           java-version: 21
 
       - name: Maven Dependency Scan
-        run: mvn org.owasp:dependency-check-maven:check -DskipTests
+        run: mvn -B clean verify -DskipTests
 
       - name: Build images
         run: docker compose build
