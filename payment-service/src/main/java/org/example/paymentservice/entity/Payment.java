@@ -21,6 +21,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.example.paymentservice.enums.PaymentType;
 
 @Entity
 @AllArgsConstructor
@@ -63,6 +64,9 @@ public class Payment {
 
     @Column(nullable = false)
     private Instant updatedAt;
+
+    @Column(nullable = false)
+    private PaymentType paymentType;
 
     @PrePersist
     void prePersist() {

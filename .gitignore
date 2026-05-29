@@ -45,4 +45,4 @@ effective-pom.xml
 deps.txt
 *.sbom.json
 dependency-check-report.*
-*-sbom.json
+*-sbom.jsonsecrets/

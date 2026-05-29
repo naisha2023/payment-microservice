@@ -42,7 +42,8 @@ public class PaymentController {
             @Valid @RequestBody CreatePaymentRequest request,
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
-        log.info("Solicitud de creación de pago recibida");
+        log.info("Solicitud de creación de pago recibida para la moneda: {} y tipo de pago: {}", request.currency(), 
+            request.paymentType(), request.description(), request.amount());
         String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
         PaymentResponse payment = paymentService.createPayment(request, jwt, authHeader);
         return ResponseEntity

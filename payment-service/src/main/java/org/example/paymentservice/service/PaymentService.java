@@ -55,10 +55,12 @@ public class PaymentService {
         UUID userId = extractUserId(jwt);
 
         log.info(
-                "payment_create_started userId={} amount={} currency={}",
+                "payment_create_started userId={} amount={} currency={} paymentType={} description={}", 
                 userId,
                 request.amount(),
-                request.currency()
+                request.currency(),
+                request.paymentType(),
+                request.description()
         );
 
         ApiResponse<WalletResponse> walletResponse = walletClient.getMyWallet(authHeader);
@@ -374,6 +376,7 @@ public class PaymentService {
                 .currency(request.currency())
                 .description(request.description())
                 .status(PaymentStatus.PENDING)
+                .paymentType(request.paymentType())
                 .build();
     }
 

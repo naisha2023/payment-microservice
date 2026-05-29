@@ -3,6 +3,7 @@ package org.example.paymentservice.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.example.paymentservice.enums.PaymentType;
 
 import java.math.BigDecimal;
 
@@ -15,5 +16,8 @@ public record CreatePaymentRequest(
         @NotBlank
         String currency,
 
-        String description
+        String description,
+        
+        @NotNull
+        PaymentType paymentType
 ) {}
