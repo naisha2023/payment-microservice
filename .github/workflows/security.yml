@@ -10,7 +10,6 @@ env:
 jobs:
   dependency-scan:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +20,11 @@ jobs:
           cache: maven
 
       - name: Maven Dependency Scan
-        run: mvn -B clean verify
+        run: mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
 
   trivy-scan:
     runs-on: ubuntu-latest
     needs: dependency-scan
-
     steps:
       - uses: actions/checkout@v4
 
@@ -34,46 +32,119 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Remove generated build artifacts before Trivy FS scan
-        run: |
-          find . -type d -name target -prune -exec rm -rf {} +
+      - name: Build Docker Images
+        run: docker compose build
 
-      - name: Verify versions
+      - name: Trivy payment-service
+        id: trivy_payment
+        continue-on-error: true
         run: |
-          mvn dependency:tree -Dincludes=org.postgresql
-          mvn dependency:tree -Dincludes=io.netty
-
-      - name: Scan Maven files
-        run: |
-          trivy fs \
+          trivy image \
             --scanners vuln \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --exit-code 1 \
-            pom.xml auth-service/pom.xml wallet-service/pom.xml payment-service/pom.xml ledger-service/pom.xml notification-service/pom.xml shared/pom.xml
-
-      - name: Build images
-        run: docker compose build
-
-      - name: Trivy payment-service
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-payment-service:latest
+            --format table \
+            --output trivy-payment.txt \
+            wallet-service-root-payment-service:latest
 
       - name: Trivy auth-service
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-auth-service:latest
+        id: trivy_auth
+        continue-on-error: true
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --output trivy-auth.txt \
+            wallet-service-root-auth-service:latest
 
       - name: Trivy wallet-service
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-wallet-service:latest
+        id: trivy_wallet
+        continue-on-error: true
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --output trivy-wallet.txt \
+            wallet-service-root-wallet-service:latest
 
       - name: Trivy ledger-service
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-ledger-service:latest
+        id: trivy_ledger
+        continue-on-error: true
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --output trivy-ledger.txt \
+            wallet-service-root-ledger-service:latest
 
       - name: Trivy notification-service
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-notification-service:latest
+        id: trivy_notification
+        continue-on-error: true
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --output trivy-notification.txt \
+            wallet-service-root-notification-service:latest
 
       - name: Trivy api-gateway
-        run: trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed wallet-service-root-api-gateway:latest
+        id: trivy_gateway
+        continue-on-error: true
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --output trivy-gateway.txt \
+            wallet-service-root-api-gateway:latest
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: trivy-*.txt
+
+      - name: Check all Trivy results
+        run: |
+          failed=0
+
+          [ "${{ steps.trivy_payment.outcome }}"      = "failure" ] && failed=1
+          [ "${{ steps.trivy_auth.outcome }}"         = "failure" ] && failed=1
+          [ "${{ steps.trivy_wallet.outcome }}"       = "failure" ] && failed=1
+          [ "${{ steps.trivy_ledger.outcome }}"       = "failure" ] && failed=1
+          [ "${{ steps.trivy_notification.outcome }}" = "failure" ] && failed=1
+          [ "${{ steps.trivy_gateway.outcome }}"      = "failure" ] && failed=1
+
+          if [ $failed -eq 1 ]; then
+            echo "❌ Vulnerabilities HIGH/CRITICAL found in one or more images"
+            exit 1
+          fi
+
+          echo "✅ No HIGH/CRITICAL vulnerabilities found"
