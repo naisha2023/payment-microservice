@@ -46,3 +46,7 @@ deps.txt
 *.sbom.json
 dependency-check-report.*
 *-sbom.jsonsecrets/
+target/
+**/target/
+secrets/
+.vscode/

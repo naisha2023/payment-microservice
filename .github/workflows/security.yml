@@ -48,6 +48,9 @@ jobs:
 
       - name: Build Docker Images
         run: docker compose build
+      
+      - name: List compose images
+        run: docker compose images
 
       - name: Trivy payment-service
         id: trivy_payment
