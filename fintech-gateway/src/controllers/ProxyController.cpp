@@ -512,24 +512,22 @@ StructuredLogger::info(debug_log);
 
     if (instance.use_ssl)
     {
-        // Prefer a dedicated client certificate for mTLS to upstream services.
-        const char *cert = getenv("GATEWAY_CLIENT_CERT_PATH");
-        const char *key = getenv("GATEWAY_CLIENT_KEY_PATH");
-        if (!cert || !key || !cert[0] || !key[0])
-        {
-            // Fallback to gateway cert/key for setups that reuse the same pair.
+        const char* cert = getenv("GATEWAY_CLIENT_CERT_PATH");
+        const char* key  = getenv("GATEWAY_CLIENT_KEY_PATH");
+
+        if (!cert || !key || !cert[0] || !key[0]) {
             cert = getenv("GATEWAY_CERT_PATH");
-            key = getenv("GATEWAY_KEY_PATH");
+            key  = getenv("GATEWAY_KEY_PATH");
         }
-        const char *ca = getenv("GATEWAY_CA_PATH");
 
-        // Client certificate is optional (mTLS). Use it when provided.
-        if (cert && key && cert[0] && key[0])
-            client->setCertPath(cert, key);
+        const char* ca = getenv("GATEWAY_CA_PATH");
 
-        // CA bundle for upstream verification (optional).
-        if (ca && ca[0])
-            client->setCaPath(ca);
+        // setCertPath(certFile, keyFile, caFile)
+        client->setCertPath(
+            (cert && cert[0]) ? cert : "",
+            (key  && key[0])  ? key  : "",
+            (ca   && ca[0])   ? ca   : ""
+        );
     }
 
     B3Context incoming = B3Propagator::extract(*req);
