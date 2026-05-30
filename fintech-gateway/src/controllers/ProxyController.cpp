@@ -525,8 +525,7 @@ StructuredLogger::info(debug_log);
         // setCertPath(certFile, keyFile, caFile)
         client->setCertPath(
             (cert && cert[0]) ? cert : "",
-            (key  && key[0])  ? key  : "",
-            (ca   && ca[0])   ? ca   : ""
+            (key  && key[0])  ? key  : ""
         );
     }
 
