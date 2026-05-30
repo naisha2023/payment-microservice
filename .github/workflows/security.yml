@@ -39,11 +39,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
+      - name: Clean generated files before Trivy FS scan
+        run: |
+          find . -type d -name target -prune -exec rm -rf {} +
+
       - name: Scan repository filesystem
         run: |
           trivy fs \
             --scanners vuln \
-            --skip-dirs "**/target" \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --ignore-unfixed \
