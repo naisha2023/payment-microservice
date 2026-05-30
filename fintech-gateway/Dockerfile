@@ -32,8 +32,10 @@ WORKDIR /app
 COPY CMakeLists.txt .
 COPY src ./src
 
-RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -GNinja && \
-    cmake --build build -j"$(nproc)"
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -GNinja
+
+RUN cmake --build build -j"$(nproc)" 2>&1 || \
+    (cat build/CMakeFiles/CMakeError.log 2>/dev/null; exit 1)
 
 FROM gcr.io/distroless/cc-debian12
 WORKDIR /app
