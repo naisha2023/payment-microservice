@@ -37,7 +37,7 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -GNinja
 RUN cmake --build build -j"$(nproc)" 2>&1 || \
     (cat build/CMakeFiles/CMakeError.log 2>/dev/null; exit 1)
 
-FROM gcr.io/distroless/cc-debian12
+FROM gcr.io/distroless/cc-debian12 
 WORKDIR /app
 COPY --from=build /app/build/fintech_gateway /app/fintech_gateway
 COPY --from=build /usr/lib/x86_64-linux-gnu/libjsoncpp.so.25 /usr/lib/x86_64-linux-gnu/
