@@ -32,11 +32,11 @@
         <angus-mail.version>2.0.5</angus-mail.version>
         <postgresql.version>42.7.11</postgresql.version>
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
+        <amqp-client.version>5.31.0</amqp-client.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
@@ -44,6 +44,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>com.rabbitmq</groupId>
+                <artifactId>amqp-client</artifactId>
+                <version>${amqp-client.version}</version>
+            </dependency>           
             
             <dependency>
                 <groupId>org.springframework.boot</groupId>

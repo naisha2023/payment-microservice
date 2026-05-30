@@ -43,6 +43,7 @@ jobs:
         run: |
           trivy fs \
             --scanners vuln \
+            --skip-dirs "**/target" \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --ignore-unfixed \
