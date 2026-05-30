@@ -349,7 +349,7 @@ services:
 
   api-gateway:
     build:
-      context: /media/D_arquivos/fintech/fintech-gateway
+      context: ./fintech-gateway
       dockerfile: Dockerfile
 
     container_name: api-gateway
@@ -377,7 +377,7 @@ services:
       GATEWAY_SERVER_KEY_PATH: /app/certs/gateway.key
 
     volumes:
-      - /media/D_arquivos/fintech/fintech-gateway/certs:/app/certs:ro
+      - ./fintech-gateway/certs:/app/certs:ro
 
     depends_on:
       redis:
