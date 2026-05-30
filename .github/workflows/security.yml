@@ -57,7 +57,7 @@ jobs:
           trivy fs \
             --ignore-unfixed \
             --skip-dirs target \
-            --skip-dirs .git \
+            --skip-dirs .git \  
             --scanners vuln \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
