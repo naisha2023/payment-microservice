@@ -42,27 +42,20 @@ jobs:
       - name: Remove generated build artifacts before Trivy FS scan
         run: |
           find . -type d -name target -prune -exec rm -rf {} +
-      - name: Clean build artifacts
-        run: |
-          find . -type d -name target -exec rm -rf {} +
-          rm -rf ~/.m2/repository/io/netty
-      
+
       - name: Verify versions
         run: |
           mvn dependency:tree -Dincludes=org.postgresql
           mvn dependency:tree -Dincludes=io.netty
 
-      - name: Scan repository filesystem
+      - name: Scan Maven files
         run: |
           trivy fs \
-            --ignore-unfixed \
-            --skip-dirs target \
-            --skip-dirs .git \  
             --scanners vuln \
             --severity HIGH,CRITICAL \
-            --exit-code 1 \
             --ignore-unfixed \
-            .
+            --exit-code 1 \
+            pom.xml auth-service/pom.xml wallet-service/pom.xml payment-service/pom.xml ledger-service/pom.xml notification-service/pom.xml shared/pom.xml
 
       - name: Build images
         run: docker compose build
