@@ -19,8 +19,11 @@ jobs:
           java-version: 21
           cache: maven
 
+      - name: Install shared module
+        run: mvn -B install -pl shared -am -DskipTests
+
       - name: Maven Dependency Scan
-        run: mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
+        run: mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -pl auth-service,wallet-service,payment-service,ledger-service,notification-service
 
   trivy-scan:
     runs-on: ubuntu-latest
