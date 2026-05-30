@@ -101,6 +101,7 @@ services:
       - monitoring-network
 
   auth-service:
+    image: auth-service:latest
     build:
       context: .
       dockerfile: auth-service/Dockerfile
@@ -150,6 +151,7 @@ services:
       - messaging-network
 
   wallet-service:
+    image: wallet-service:latest
     build:
       context: .
       dockerfile: wallet-service/Dockerfile
@@ -199,6 +201,7 @@ services:
       - messaging-network
 
   payment-service:
+    image: payment-service:latest
     build:
       context: .
       dockerfile: payment-service/Dockerfile
@@ -251,6 +254,7 @@ services:
       - messaging-network
 
   ledger-service:
+    image: ledger-service:latest
     build:
       context: .
       dockerfile: ledger-service/Dockerfile
@@ -297,6 +301,7 @@ services:
       - messaging-network
 
   notification-service:
+    image: notification-service:latest
     build:
       context: .
       dockerfile: notification-service/Dockerfile
@@ -348,6 +353,7 @@ services:
       - messaging-network
 
   api-gateway:
+    image: api-gateway:latest
     build:
       context: ./fintech-gateway
       dockerfile: Dockerfile

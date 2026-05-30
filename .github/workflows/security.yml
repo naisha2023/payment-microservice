@@ -63,7 +63,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-payment.txt \
-            wallet-service-root-payment-service:latest
+            payment-service:latest
 
       - name: Trivy auth-service
         id: trivy_auth
@@ -76,7 +76,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-auth.txt \
-            wallet-service-root-auth-service:latest
+            auth-service:latest
 
       - name: Trivy wallet-service
         id: trivy_wallet
@@ -89,7 +89,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-wallet.txt \
-            wallet-service-root-wallet-service:latest
+            wallet-service:latest
 
       - name: Trivy ledger-service
         id: trivy_ledger
@@ -102,7 +102,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-ledger.txt \
-            wallet-service-root-ledger-service:latest
+            ledger-service:latest
 
       - name: Trivy notification-service
         id: trivy_notification
@@ -115,7 +115,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-notification.txt \
-            wallet-service-root-notification-service:latest
+            notification-service:latest
 
       - name: Trivy api-gateway
         id: trivy_gateway
@@ -128,7 +128,7 @@ jobs:
             --exit-code 1 \
             --format table \
             --output trivy-gateway.txt \
-            wallet-service-root-api-gateway:latest
+            api-gateway:latest
 
       - name: Upload Trivy reports
         if: always()
