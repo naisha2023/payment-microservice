@@ -16,20 +16,26 @@ spring:
             host: consul
             port: 8500
             discovery:
+                enabled: true
                 register: true
                 scheme: https
+                prefer-ip-address: true
                 health-check-url: https://wallet-service:8082/actuator/health
                 health-check-tls-skip-verify: true
     application:
         name: wallet-service
-    rabbitmq:
-        host: rabbitmq
-        port: 5672
-        username: admin
-        password: admin123
-        listener:
-            simple:
-                default-requeue-rejected: false
+    kafka:
+        bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+        producer:
+            key-serializer: org.apache.kafka.common.serialization.StringSerializer
+            value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+        consumer:
+            group-id: ${spring.application.name}
+            auto-offset-reset: earliest
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+            properties:
+                spring.json.trusted.packages: "org.example.shared.events,org.example.*"
 springdoc:
   api-docs:
     path: /v3/api-docs

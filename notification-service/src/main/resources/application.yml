@@ -39,15 +39,24 @@ spring:
       host: consul
       port: 8500
       discovery:
+        enabled: true
         register: true
+        prefer-ip-address: true
         scheme: http
         health-check-url: http://notification-service:8085/actuator/health
         health-check-tls-skip-verify: true
-  rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: admin
-    password: admin123
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "org.example.shared.events,org.example.*"
 
 management:
   tracing:

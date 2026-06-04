@@ -19,7 +19,7 @@ struct GatewayConfig {
         { "/auth",          "auth-service",          true, false, true },
         { "/wallets",       "wallet-service",        true,  false, true },
         { "/payments",      "payment-service",       true,  false, true },
-        { "/notifications", "notification-service",  true,  false, true },
+        { "/notifications", "notification-service",  false,  false, true },
         { "/loans",         "loans-service",         true,  false, true },
         { "/realtime",      "realtime-service",      true,  false, true }
     };

@@ -11,9 +11,9 @@ server:
 
 mtls:
   key-store: file:/app/certs/payment.p12
-  key-store-password: ${SSL_PASSWORD}
+  key-store-password: ${ssl.password}
   trust-store: file:/app/certs/truststore.p12
-  trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+  trust-store-password: ${ssl.trust.store.password}
 spring:
   datasource:
     url: jdbc:postgresql://payment-db:5432/payment_db
@@ -26,16 +26,24 @@ spring:
       host: consul
       port: 8500
       discovery:
+        enabled: true
+        register: true
+        prefer-ip-address: true
         scheme: https
         health-check-url: https://payment-service:8083/actuator/health
         health-check-tls-skip-verify: true
-        register: true
-  rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: admin
-    password: admin123
-
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "org.example.shared.events,org.example.*"
 management:
   tracing:
     sampling:

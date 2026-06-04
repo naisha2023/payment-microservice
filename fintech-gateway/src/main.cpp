@@ -16,8 +16,42 @@
 
 #include "logging/StructuredLogger.h"
 
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cstring>
+#include <algorithm>
+
 using namespace drogon;
 using namespace std;
+
+std::string readFile(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) return "";
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+
+    std::string value = buffer.str();
+    value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
+    value.erase(std::remove(value.begin(), value.end(), '\r'), value.end());
+
+    return value;
+}
+
+std::string getSecret(const char* envName, const char* fileEnvName) {
+    const char* value = std::getenv(envName);
+    if (value && std::strlen(value) > 0) {
+        return value;
+    }
+
+    const char* filePath = std::getenv(fileEnvName);
+    if (filePath && std::strlen(filePath) > 0) {
+        return readFile(filePath);
+    }
+
+    return "";
+}
 
 int main()
 {
@@ -39,16 +73,13 @@ int main()
 
         redis_config.port = getenv("REDIS_PORT") ? stoi(getenv("REDIS_PORT")): 6379;
 
-        redis_config.password =
-            getenv("REDIS_PASSWORD")
-                ? getenv("REDIS_PASSWORD")
-                : "";
+        redis_config.password = getSecret("REDIS_PASSWORD", "REDIS_PASSWORD_FILE");
 
         redis_config.pool_size = 10;
 
-        const char* jwt_secret = getenv("JWT_SECRET");
+        const std::string jwt_secret = getSecret("JWT_SECRET", "JWT_SECRET_FILE");
 
-        if (!jwt_secret || string(jwt_secret).empty())
+        if ( jwt_secret.empty())
         {
             Json::Value log;
             log["event"] = "startup_failed";
@@ -175,6 +206,11 @@ int main()
                 resp->setStatusCode(k204NoContent);
                 string correlation_id = ProxyController::get_or_create_correlation_id(req);
                 ProxyController::add_common_response_headers(resp, correlation_id);
+                auto origin = req->getHeader("Origin");
+                if (!origin.empty()) {
+                    resp->removeHeader("Access-Control-Allow-Origin");
+                    resp->addHeader("Access-Control-Allow-Origin", origin);
+                }
                 resp->addHeader("Access-Control-Max-Age", "86400");
                 return resp;  // short-circuit, nunca llega al router
             }

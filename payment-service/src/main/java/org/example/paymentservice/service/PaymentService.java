@@ -20,7 +20,7 @@ import org.example.paymentservice.exception.PaymentNotFoundException;
 import org.example.paymentservice.exception.WalletServiceUnavailableException;
 import org.example.paymentservice.repository.OutboxRepository;
 import org.example.paymentservice.repository.PaymentRepository;
-import org.example.shared.config.RabbitConfig;
+import org.example.shared.config.KafkaTopics;
 import org.example.shared.dtos.ApiResponse;
 import org.example.shared.dtos.PaymentCompletedEvent;
 import org.example.shared.dtos.PaymentCreatedEvent;
@@ -264,8 +264,8 @@ public class PaymentService {
         log.info(
                 "payment_outbox_create_started paymentId={} routingKeys={},{}",
                 payment.getId(),
-                RabbitConfig.PAYMENT_PROCESSED_ROUTING_KEY,
-                RabbitConfig.NOTIFICATION_CREATED_ROUTING_KEY
+                KafkaTopics.PAYMENT_PROCESSED,
+                KafkaTopics.NOTIFICATION_CREATED
         );
 
         PaymentCompletedEvent paymentEvent = new PaymentCompletedEvent(
@@ -296,7 +296,7 @@ public class PaymentService {
                 toJson(paymentEvent),
                 Instant.now(),
                 false,
-                RabbitConfig.PAYMENT_PROCESSED_ROUTING_KEY,
+                KafkaTopics.PAYMENT_PROCESSED,
                 correlationId()
         ));
 
@@ -308,7 +308,7 @@ public class PaymentService {
                 toJson(notificationEvent),
                 Instant.now(),
                 false,
-                RabbitConfig.NOTIFICATION_CREATED_ROUTING_KEY,
+                KafkaTopics.NOTIFICATION_CREATED,
                 correlationId()
         ));
 
@@ -326,7 +326,7 @@ public class PaymentService {
         log.info(
                 "payment_outbox_create_started paymentId={} routingKey={}",
                 payment.getId(),
-                RabbitConfig.PAYMENT_CREATED_ROUTING_KEY
+                KafkaTopics.PAYMENT_CREATED
         );
 
         PaymentCreatedEvent event = new PaymentCreatedEvent(
@@ -349,7 +349,7 @@ public class PaymentService {
                 toJson(event),
                 Instant.now(),
                 false,
-                RabbitConfig.PAYMENT_CREATED_ROUTING_KEY,
+                KafkaTopics.PAYMENT_CREATED,
                 correlationId()
         );
 
@@ -359,7 +359,7 @@ public class PaymentService {
                 "payment_outbox_created paymentId={} outboxEventId={} routingKey={}",
                 payment.getId(),
                 outbox.getId(),
-                RabbitConfig.PAYMENT_CREATED_ROUTING_KEY
+                KafkaTopics.PAYMENT_CREATED
         );
     }
 

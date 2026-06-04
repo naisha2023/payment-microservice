@@ -1,13 +1,13 @@
 package org.example.paymentservice.config;
 
-import org.example.paymentservice.repository.OutboxRepository;
-import org.example.shared.config.RabbitConfig;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.paymentservice.repository.OutboxRepository;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -15,35 +15,37 @@ import lombok.extern.slf4j.Slf4j;
 public class OutboxPublisher {
 
     private final OutboxRepository outboxRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Scheduled(fixedDelay = 2000)
     public void publish() {
         var events = outboxRepository.findByPublishedFalse();
 
         for (var event : events) {
-        try {
-            rabbitTemplate.convertAndSend(
-                RabbitConfig.EXCHANGE,
-                event.getRoutingKey(),
-                event.getPayload(),
-                message -> {
-                    if (event.getCorrelationId() != null) {
-                        message.getMessageProperties()
-                                .setHeader("X-Correlation-ID", event.getCorrelationId());
-                    }
-                    return message;
-                }
-            );
+    try {
+        MessageBuilder<String> messageBuilder = MessageBuilder
+                .withPayload(event.getPayload())
+                .setHeader(KafkaHeaders.TOPIC, event.getType())
+                .setHeader(KafkaHeaders.KEY, event.getAggregateId().toString());
 
-            event.setPublished(true);
-            outboxRepository.save(event);
-
-            log.info("Event published: id={}, routingKey={}", event.getId(), event.getRoutingKey());
-
-        } catch (Exception e) {
-            log.error("Error publishing event {}", event.getId(), e);
+        if (event.getCorrelationId() != null) {
+            messageBuilder.setHeader("X-Correlation-ID", event.getCorrelationId());
         }
+
+        kafkaTemplate.send(messageBuilder.build()).get();
+
+        event.setPublished(true);
+        outboxRepository.save(event);
+
+        log.info(
+                "Event published: id={}, topic={}",
+                event.getId(),
+                event.getType()
+        );
+
+    } catch (Exception e) {
+        log.error("Error publishing event {}", event.getId(), e);
     }
+}
     }
 }

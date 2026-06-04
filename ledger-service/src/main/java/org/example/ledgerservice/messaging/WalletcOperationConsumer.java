@@ -5,15 +5,13 @@ import java.math.BigDecimal;
 import org.example.ledgerservice.entity.LedgerAccount;
 import org.example.ledgerservice.repository.LedgerAccountRepository;
 import org.example.ledgerservice.service.LedgerTransactionService;
-import org.example.shared.config.RabbitConfig;
+import org.example.shared.config.KafkaTopics;
+import org.example.shared.enums.AccountType;
 import org.example.shared.event.WalletCreatedEvent;
 import org.example.shared.event.WalletFundedEvent;
 import org.example.shared.event.WalletReleaseFundedEvent;
-import org.example.shared.enums.AccountType;
-
 import org.slf4j.MDC;
-
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
@@ -26,10 +24,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class WalletcOperationConsumer {
 
+    private static final String GROUP_ID = "ledger-service";
+
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerTransactionService ledgerTransactionService;
 
-    @RabbitListener(queues = RabbitConfig.WALLET_CREATED_QUEUE)
+    @KafkaListener(
+            topics = KafkaTopics.WALLET_CREATED,
+            groupId = GROUP_ID
+    )
     @Transactional
     public void handle(
             WalletCreatedEvent event,
@@ -38,7 +41,10 @@ public class WalletcOperationConsumer {
         withCorrelationId(correlationId, () -> handleWalletCreated(event, correlationId));
     }
 
-    @RabbitListener(queues = RabbitConfig.WALLET_FUNDED_QUEUE)
+    @KafkaListener(
+            topics = KafkaTopics.WALLET_FUNDED,
+            groupId = GROUP_ID
+    )
     @Transactional
     public void handle(
             WalletFundedEvent event,
@@ -47,7 +53,10 @@ public class WalletcOperationConsumer {
         withCorrelationId(correlationId, () -> handleWalletFunded(event, correlationId));
     }
 
-    @RabbitListener(queues = RabbitConfig.WALLET_RELEASE_FUNDED_QUEUE)
+    @KafkaListener(
+            topics = KafkaTopics.WALLET_RELEASE_FUNDED,
+            groupId = GROUP_ID
+    )
     @Transactional
     public void handle(
             WalletReleaseFundedEvent event,

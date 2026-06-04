@@ -28,31 +28,56 @@ services:
     networks:
       - data-network
 
-  rabbitmq:
-    image: rabbitmq:4-management
-    container_name: rabbitmq
-    hostname: rabbitmq
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: kafka
     restart: unless-stopped
 
     ports:
-      - "5672:5672"
-      - "15672:15672"
-
-    secrets:
-      - rabbitmq_password
+      - "9092:9092"
 
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS_FILE: /run/secrets/rabbitmq_password
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
       retries: 10
 
     networks:
       - messaging-network
+
+  consul:
+    image: hashicorp/consul:1.21
+    container_name: consul
+    restart: unless-stopped
+    command: >
+      agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+      -hcl='enable_central_service_config = true'
+    ports:
+      - "8500:8500"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - services-network
 
   redis:
     image: redis:7-alpine
@@ -97,6 +122,12 @@ services:
       - grafana-data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
     networks:
       - monitoring-network
 
@@ -112,7 +143,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
+        condition: service_started
+      consul:
         condition: service_healthy
 
     ports:
@@ -121,7 +154,6 @@ services:
     secrets:
       - jwt_secret
       - db_password
-      - rabbitmq_password
       - ssl_password
       - truststore_password
 
@@ -130,10 +162,7 @@ services:
       SPRING_DATASOURCE_USERNAME: user_admin
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
 
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSL_PASSWORD_FILE: /run/secrets/ssl_password
@@ -141,9 +170,18 @@ services:
 
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+
     volumes:
       - ./certs/server.p12:/app/certs/server.p12:ro
       - ./certs/truststore.p12:/app/certs/truststore.p12:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
     networks:
       - services-network
@@ -162,7 +200,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
+        condition: service_started
+      consul:
         condition: service_healthy
 
     ports:
@@ -171,7 +211,6 @@ services:
     secrets:
       - jwt_secret
       - db_password
-      - rabbitmq_password
       - ssl_password
       - truststore_password
 
@@ -180,10 +219,7 @@ services:
       SPRING_DATASOURCE_USERNAME: user_admin
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
 
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSL_PASSWORD_FILE: /run/secrets/ssl_password
@@ -191,9 +227,19 @@ services:
 
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+
     volumes:
       - ./certs/wallet.p12:/app/certs/wallet.p12:ro
       - ./certs/truststore.p12:/app/certs/truststore.p12:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost:8082/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
     networks:
       - services-network
@@ -212,10 +258,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
+        condition: service_started
+      consul:
         condition: service_healthy
       wallet-service:
-        condition: service_started
+        condition: service_healthy
 
     ports:
       - "8083:8083"
@@ -223,7 +271,6 @@ services:
     secrets:
       - jwt_secret
       - db_password
-      - rabbitmq_password
       - ssl_password
       - truststore_password
 
@@ -232,10 +279,7 @@ services:
       SPRING_DATASOURCE_USERNAME: user_admin
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
 
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSL_PASSWORD_FILE: /run/secrets/ssl_password
@@ -244,9 +288,18 @@ services:
       SERVICES_WALLET_BASE_URL: https://wallet-service:8082
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+
     volumes:
       - ./certs/payment.p12:/app/certs/payment.p12:ro
       - ./certs/truststore.p12:/app/certs/truststore.p12:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k https://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
     networks:
       - services-network
@@ -265,7 +318,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
+        condition: service_started
+      consul:
         condition: service_healthy
 
     ports:
@@ -274,7 +329,6 @@ services:
     secrets:
       - jwt_secret
       - db_password
-      - rabbitmq_password
       - ssl_password
       - truststore_password
 
@@ -283,10 +337,7 @@ services:
       SPRING_DATASOURCE_USERNAME: user_admin
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
 
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSL_PASSWORD_FILE: /run/secrets/ssl_password
@@ -294,6 +345,15 @@ services:
 
       SERVER_PORT: 8084
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost:8084/actuator/health | grep UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
     networks:
       - services-network
@@ -312,7 +372,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
+        condition: service_started
+      consul:
         condition: service_healthy
 
     ports:
@@ -321,7 +383,6 @@ services:
     secrets:
       - jwt_secret
       - db_password
-      - rabbitmq_password
       - mail_password
       - ssl_password
       - truststore_password
@@ -331,10 +392,7 @@ services:
       SPRING_DATASOURCE_USERNAME: user_admin
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
 
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       MAIL_PASSWORD_FILE: /run/secrets/mail_password
       JWT_SECRET_FILE: /run/secrets/jwt_secret
@@ -342,6 +400,15 @@ services:
       SSL_TRUST_STORE_PASSWORD_FILE: /run/secrets/truststore_password
 
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- http://localhost:8085/actuator/health | grep UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
     volumes:
       - ./certs/client.p12:/app/certs/client.p12:ro
@@ -382,11 +449,16 @@ services:
       GATEWAY_SERVER_CERT_PATH: /app/certs/gateway.crt
       GATEWAY_SERVER_KEY_PATH: /app/certs/gateway.key
 
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+
     volumes:
       - ./fintech-gateway/certs:/app/certs:ro
 
     depends_on:
       redis:
+        condition: service_healthy
+      consul:
         condition: service_healthy
       auth-service:
         condition: service_started
@@ -394,6 +466,12 @@ services:
         condition: service_started
       payment-service:
         condition: service_started
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
     networks:
       - gateway-network
@@ -491,9 +569,6 @@ secrets:
 
   db_password:
     file: ./secrets/db_password.txt
-
-  rabbitmq_password:
-    file: ./secrets/rabbitmq_password.txt
 
   redis_password:
     file: ./secrets/redis_password.txt

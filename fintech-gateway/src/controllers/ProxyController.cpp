@@ -514,19 +514,32 @@ StructuredLogger::info(debug_log);
     {
         const char* cert = getenv("GATEWAY_CLIENT_CERT_PATH");
         const char* key  = getenv("GATEWAY_CLIENT_KEY_PATH");
+        const char* ca = getenv("GATEWAY_CA_PATH");
+
+        LOG_INFO << "CERT=" << (cert ? cert : "NULL");
+        LOG_INFO << "KEY="  << (key  ? key  : "NULL");
+        LOG_INFO << "CA="   << (ca   ? ca   : "NULL");
 
         if (!cert || !key || !cert[0] || !key[0]) {
             cert = getenv("GATEWAY_CERT_PATH");
             key  = getenv("GATEWAY_KEY_PATH");
-        }
-
-        const char* ca = getenv("GATEWAY_CA_PATH");
+        }       
 
         // setCertPath(certFile, keyFile, caFile)
         client->setCertPath(
             (cert && cert[0]) ? cert : "",
             (key  && key[0])  ? key  : ""
         );
+        if (ca && ca[0]) {
+
+            string ca_path(ca);
+    client->setSockOptCallback([ca_path](int fd) {
+    });
+
+            LOG_INFO << "Adding CA file: " << string(ca);   
+            client->addSSLConfigs({{"CAfile", string(ca)}});
+            LOG_INFO << "CA configured";
+        }
     }
 
     B3Context incoming = B3Propagator::extract(*req);

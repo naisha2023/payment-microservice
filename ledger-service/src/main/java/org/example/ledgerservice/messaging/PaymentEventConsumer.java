@@ -2,14 +2,13 @@ package org.example.ledgerservice.messaging;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import tools.jackson.databind.ObjectMapper;
 
 import org.example.ledgerservice.dto.PaymentCreatedEvent;
 import org.example.ledgerservice.service.LedgerTransactionServiceImpl;
 
 import org.slf4j.MDC;
 
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
@@ -19,15 +18,18 @@ import org.springframework.stereotype.Service;
 public class PaymentEventConsumer {
 
     private final LedgerTransactionServiceImpl ledgerEventService;
-    private final ObjectMapper objectMapper;
 
-    @RabbitListener(
-        queues = "payment.created.queue",
-        containerFactory = "rabbitListenerContainerFactory"
+    @KafkaListener(
+            topics = "payment.created",
+            groupId = "ledger-service",
+            containerFactory = "paymentCreatedKafkaListenerContainerFactory"
     )
     public void handle(
-            String payload,
-            @Header(name = "X-Correlation-ID", required = false)
+            PaymentCreatedEvent event,
+            @Header(
+                    name = "X-Correlation-ID",
+                    required = false
+            )
             String correlationId
     ) {
 
@@ -41,9 +43,6 @@ public class PaymentEventConsumer {
                     "payment_created_event_received correlationId={}",
                     correlationId
             );
-
-            PaymentCreatedEvent event =
-                    objectMapper.readValue(payload, PaymentCreatedEvent.class);
 
             ledgerEventService.handlePaymentCreated(event);
 
@@ -64,7 +63,7 @@ public class PaymentEventConsumer {
                     ex
             );
 
-            throw new RuntimeException(ex);
+            throw ex;
 
         } finally {
             MDC.remove("correlation_id");

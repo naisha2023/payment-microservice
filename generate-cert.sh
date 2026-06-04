@@ -1,10 +1,9 @@
 #!/bin/bash
 set -e
-set -a
-source .env
-set +a
 
-CPP_GATEWAY_DIR="/media/D_arquivos/fintech/fintech-gateway"
+SECRETS_DIR="secrets"
+
+CPP_GATEWAY_DIR="fintech-gateway"
 
 mkdir -p certs/
 mkdir -p auth-service/src/main/resources/certs/
@@ -12,6 +11,19 @@ mkdir -p notification-service/src/main/resources/certs/
 mkdir -p payment-service/src/main/resources/certs/
 mkdir -p wallet-service/src/main/resources/certs/
 mkdir -p "$CPP_GATEWAY_DIR/certs"
+
+SSL_PASSWORD="$(tr -d '\r\n' < "$SECRETS_DIR/ssl_password.txt")"
+SSL_TRUST_STORE_PASSWORD="$(tr -d '\r\n' < "$SECRETS_DIR/truststore_password.txt")"
+
+if [ -z "$SSL_PASSWORD" ]; then
+    echo "❌ ERROR: secrets/ssl_password.txt está vacío"
+    exit 1
+fi
+
+if [ -z "$SSL_TRUST_STORE_PASSWORD" ]; then
+    echo "❌ ERROR: secrets/truststore_password.txt está vacío"
+    exit 1
+fi
 
 # ── CA: solo se genera si no existe ──────────────────────────
 if [ ! -f certs/ca.key ] || [ ! -f certs/ca.crt ]; then

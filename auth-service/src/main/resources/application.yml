@@ -5,6 +5,7 @@ server:
     enabled: true
     key-store: file:/app/certs/server.p12
     key-store-password: ${SSL_PASSWORD}
+    key-password: ${ssl.password}
     key-store-type: PKCS12
     trust-store: file:/app/certs/truststore.p12
     trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
@@ -26,19 +27,26 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: admin
-    password: admin123
-
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "org.example.shared.events,org.example.*"
   cloud:
     consul:
       host: consul
       port: 8500
       discovery:
+        enabled: true
         register: true
+        prefer-ip-address: true
         scheme: https
         health-check-url: https://auth-service:8081/actuator/health
         health-check-tls-skip-verify: true

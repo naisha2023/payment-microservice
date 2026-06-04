@@ -1,51 +1,49 @@
 package org.example.walletservice.messaging;
 
-import org.example.shared.config.RabbitConfig;
-
+import lombok.RequiredArgsConstructor;
+import org.example.shared.config.KafkaTopics;
 import org.example.shared.event.WalletCreatedEvent;
+import org.example.shared.event.WalletDebitConfirmedEvent;
 import org.example.shared.event.WalletFundedEvent;
 import org.example.shared.event.WalletReleaseFundedEvent;
-import org.example.shared.event.WalletDebitConfirmedEvent;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class WalletEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void publish(WalletCreatedEvent event) {
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE,
-            RabbitConfig.WALLET_CREATED_ROUTING_KEY,
-            event
+        kafkaTemplate.send(
+                KafkaTopics.WALLET_CREATED,
+                event.walletId().toString(),
+                event
         );
     }
 
     public void publish(WalletFundedEvent event) {
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE,
-            RabbitConfig.WALLET_FUNDED_ROUTING_KEY,
-            event
+        kafkaTemplate.send(
+                KafkaTopics.WALLET_FUNDED,
+                event.walletId().toString(),
+                event
         );
     }
 
     public void publish(WalletDebitConfirmedEvent event) {
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE,
-            RabbitConfig.WALLET_DEBIT_CONFIRMED_ROUTING_KEY,
-            event
+        kafkaTemplate.send(
+                KafkaTopics.WALLET_DEBIT_CONFIRMED,
+                event.walletId().toString(),
+                event
         );
     }
 
     public void publish(WalletReleaseFundedEvent event) {
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE,
-            RabbitConfig.WALLET_RELEASE_FUNDED_ROUTING_KEY,
-            event
+        kafkaTemplate.send(
+                KafkaTopics.WALLET_RELEASE_FUNDED,
+                event.walletId().toString(),
+                event
         );
     }
 }

@@ -1,23 +1,19 @@
 package org.example.authservice.messaging;
 
-import org.example.shared.config.RabbitConfig;
-
 import org.example.shared.event.UserCreatedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.kafka.core.KafkaTemplate;
+
+import static org.example.shared.config.KafkaTopics.topic;
 
 @Component
 @RequiredArgsConstructor
 public class UserEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void publish(UserCreatedEvent event) {
-        rabbitTemplate.convertAndSend(
-                RabbitConfig.EXCHANGE,
-                RabbitConfig.USER_CREATED_ROUTING_KEY,
-                event
-        );
+        kafkaTemplate.send(topic, event.userId().toString(), event);
     }
 }
