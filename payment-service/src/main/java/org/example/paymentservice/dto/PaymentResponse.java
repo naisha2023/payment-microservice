@@ -16,5 +16,8 @@ public record PaymentResponse(
         PaymentStatus status,
         String failureReason,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String qrCode,
+        String qrCodeBase64
+
 ) {}

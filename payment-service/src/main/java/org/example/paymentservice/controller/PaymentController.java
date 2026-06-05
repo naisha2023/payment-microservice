@@ -11,6 +11,7 @@ import org.example.shared.dtos.ApiResponse;
 import org.example.shared.interfaces.Auditable;
 import org.example.paymentservice.dto.CreatePaymentRequest;
 import org.example.paymentservice.dto.PaymentResponse;
+import org.example.paymentservice.entity.Payment;
 import org.example.paymentservice.service.PaymentService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,9 +19,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.example.paymentservice.enums.PaymentStatus;
 
+import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import org.example.paymentservice.dto.PixProviderResponse;
+
 
 /**
  * Controlador REST para operaciones de pagos
@@ -99,5 +106,51 @@ public class PaymentController {
         log.info("Solicitud de lista de pagos del usuario");
         List<PaymentResponse> payments = paymentService.getMyPayments(jwt);
         return ResponseEntity.ok(ApiResponse.success(payments));
+    }
+    
+    @PostMapping("/pix/deposit")
+    public PaymentResponse createPixDeposit(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody CreatePaymentRequest request
+    ) {
+        Payment payment = paymentService.createPendingPixDeposit(
+                jwt,
+                request.amount()
+        );
+
+        PixProviderResponse pix = pixProvider.createPixCharge(
+                payment.getId(),
+                payment.getAmount()
+        );
+
+        paymentService.attachProviderData(
+                payment.getId(),
+                pix.providerPaymentId(),
+                pix.qrCode(),
+                pix.qrCodeBase64()
+        );
+
+        return new PixDepositResponse(
+                payment.getId(),
+                "PENDING",
+                pix.qrCode(),
+                pix.qrCodeBase64()
+        );
+    }
+    
+    @PostMapping("/webhooks/pix")
+    public ResponseEntity<Void> pixWebhook(@RequestBody PixWebhookRequest webhook) {
+
+        PaymentStatus status =
+                pixProvider.getPaymentStatus(webhook.providerPaymentId());
+
+        if (status.isApproved()) {
+            paymentService.confirmPixDeposit(
+                    status.providerPaymentId(),
+                    status.amount()
+            );
+        }
+
+        return ResponseEntity.ok().build();
     }
 }

@@ -52,6 +52,18 @@ public class Payment {
     @Column(nullable = false)
     private PaymentStatus status;
 
+    @Column(nullable = false)
+    private String provider;
+
+    @Column(nullable = false)
+    private String providerPaymentId;
+
+    @Column
+    private String qrCode;
+
+    @Column
+    private String qrCodeBase64;
+
     private String description;
 
     @Column(nullable = false)
@@ -68,6 +80,9 @@ public class Payment {
     @Column(nullable = false)
     private PaymentType paymentType;
 
+    @Column
+    private Instant paidAt;
+
     @PrePersist
     void prePersist() {
         this.createdAt = Instant.now();
@@ -76,6 +91,12 @@ public class Payment {
 
     @PreUpdate
     void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
+
+    public void markApproved() {
+        this.status = PaymentStatus.APPROVED;
+        this.paidAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 }

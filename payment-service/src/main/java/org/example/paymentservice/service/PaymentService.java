@@ -14,6 +14,7 @@ import org.example.paymentservice.entity.OutboxEvent;
 import org.example.paymentservice.entity.Payment;
 import org.example.paymentservice.enums.EventType;
 import org.example.paymentservice.enums.PaymentStatus;
+import org.example.paymentservice.enums.PaymentType;
 import org.example.paymentservice.exception.InvalidPaymentStateException;
 import org.example.paymentservice.exception.PaymentNotAuthorizedException;
 import org.example.paymentservice.exception.PaymentNotFoundException;
@@ -38,6 +39,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -479,7 +481,7 @@ public class PaymentService {
                 ex
         );
 
-        payment.setStatus(PaymentStatus.FAILED);
+        payment.setStatus(PaymentStatus.REJECTED);
         payment.setFailureReason(truncate(
                 PaymentConstants.ERROR_PROCESSING_PAYMENT + ": " + ex.getMessage(),
                 PaymentConstants.MAX_FAILURE_REASON_LENGTH
@@ -552,7 +554,9 @@ public class PaymentService {
                 payment.getStatus(),
                 payment.getFailureReason(),
                 payment.getCreatedAt(),
-                payment.getUpdatedAt()
+                payment.getUpdatedAt(),
+                payment.getQrCode(),
+                payment.getQrCodeBase64()
         );
     }
 
@@ -640,4 +644,108 @@ public class PaymentService {
                 ex
         );
     }
+
+    @Transactional
+        public void confirmPixDeposit(String providerPaymentId, BigDecimal amount, Jwt jwt) {
+        Payment payment = paymentRepository
+                .findByProviderPaymentIdForUpdate(providerPaymentId)
+                .orElseThrow();
+
+        if (payment.getStatus() == PaymentStatus.APPROVED) {
+                return;
+        }
+
+        payment.markApproved();
+
+        paymentRepository.save(payment);
+
+        OutboxEvent event = new OutboxEvent(
+                UUID.randomUUID(),
+                PaymentConstants.OUTBOX_AGGREGATE_TYPE,
+                payment.getId().toString(),
+                PaymentConstants.EVENT_PAYMENT_COMPLETED,
+                toJson(new PaymentCompletedEvent(
+                        UUID.randomUUID(),
+                        EventType.PAYMENT_COMPLETED.getDescription(),
+                        Instant.now(),
+                        payment.getId(),
+                        payment.getWalletId(),
+                        payment.getUserId(),
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        payment.getStatus().name()
+                )),
+                Instant.now(),
+                false,
+                KafkaTopics.PAYMENT_PROCESSED,
+                correlationId()
+        );
+
+        outboxRepository.save(event);
+
+        WalletOperationRequest walletRequest = new WalletOperationRequest(
+                amount,
+                payment.getReference(),
+                payment.getDescription(),
+                payment.getId()
+        );
+
+        walletClient.deposit(
+                payment.getUserId(),
+                walletRequest,
+                jwt.getTokenValue()
+        );
+
+        OutboxEvent notificationEvent = new OutboxEvent(
+                UUID.randomUUID(),
+                PaymentConstants.OUTBOX_AGGREGATE_TYPE,
+                payment.getId().toString(),
+                PaymentConstants.EVENT_MESSAGE_SEND,
+                toJson(new NotificationEvent(
+                        payment.getUserId(),
+                        payment.getId(),
+                        EventType.PAYMENT_COMPLETED.getDescription()
+                )),
+                Instant.now(),
+                false,
+                KafkaTopics.NOTIFICATION_CREATED,
+                correlationId()
+        );
+
+        outboxRepository.save(notificationEvent);
+
+        log.info(
+                "payment_approved paymentId={} userId={} amount={} currency={}",
+                payment.getId(),
+                payment.getUserId(),
+                payment.getAmount(),
+                payment.getCurrency()
+        );
+    }
+
+        @Transactional
+        public Payment createPendingPixDeposit(Jwt jwt, BigDecimal amount) {
+
+                UUID userId = extractUserId(jwt);
+
+                if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new IllegalArgumentException("Amount must be greater than zero");
+                }
+
+                Payment payment = new Payment();
+
+                payment.setId(UUID.randomUUID());
+                payment.setUserId(userId);
+                payment.setAmount(amount);
+                payment.setPaymentType(PaymentType.PIX);
+                payment.setStatus(PaymentStatus.PENDING);
+                payment.setCreatedAt(Instant.now());
+                payment.setUpdatedAt(Instant.now());
+                payment.setReference("PIX-" + payment.getId());
+                payment.setCurrency("BRL");
+                payment.setDescription("Depósito via PIX");
+                payment.setProvider("PIX_PROVIDER");
+
+                return paymentRepository.save(payment);
+        }
 }

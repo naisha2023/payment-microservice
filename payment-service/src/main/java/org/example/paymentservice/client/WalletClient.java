@@ -43,4 +43,11 @@ public interface WalletClient {
         org.example.shared.dtos.ApiResponse<WalletResponse> getMyWallet(
         @RequestHeader("Authorization") String authHeader
         );
+
+        @PostMapping("/wallets/{userId}/deposit")
+        void deposit(
+                @PathVariable("userId") UUID userId,
+                @RequestBody WalletOperationRequest request,
+                @RequestHeader("Authorization") String authHeader
+        );
 } 

@@ -136,7 +136,14 @@ jobs:
         with:
           name: trivy-reports
           path: trivy-*.txt
-
+      - name: Debug outcomes
+        run: |
+          echo "payment=${{ steps.trivy_payment.outcome }}"
+          echo "auth=${{ steps.trivy_auth.outcome }}"
+          echo "wallet=${{ steps.trivy_wallet.outcome }}"
+          echo "ledger=${{ steps.trivy_ledger.outcome }}"
+          echo "notification=${{ steps.trivy_notification.outcome }}"
+          echo "gateway=${{ steps.trivy_gateway.outcome }}"
       - name: Check all Trivy results
         run: |
           failed=0

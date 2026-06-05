@@ -5,7 +5,7 @@ public enum PaymentType {
     CREDIT_CARD("Credit card"),
     BANK_TRANSFER("Bank transfer"),
     DIGITAL_WALLET("Digital wallet"),
-    PiX("Pix"),
+    PIX("Pix"),
     PAYPAL("PayPal");
 
     private final String description;
