@@ -2,20 +2,22 @@ FROM debian:bookworm AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    git \
-    ninja-build \
-    pkg-config \
-    libssl-dev \
-    zlib1g-dev \
-    uuid-dev \
-    libjsoncpp-dev \
-    libc-ares-dev \
-    libbrotli-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --only-upgrade libgnutls30 && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        ninja-build \
+        pkg-config \
+        libssl-dev \
+        zlib1g-dev \
+        uuid-dev \
+        libjsoncpp-dev \
+        libc-ares-dev \
+        libbrotli-dev \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN git clone --recurse-submodules --depth 1 --branch v1.9.13 \
     https://github.com/drogonframework/drogon.git /app/drogon
@@ -46,9 +48,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --only-upgrade libgnutls30 && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/build/fintech_gateway /app/fintech_gateway
 COPY --from=build /app/certs /app/certs
