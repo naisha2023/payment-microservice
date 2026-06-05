@@ -2,7 +2,7 @@ FROM debian:bookworm AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     git \
