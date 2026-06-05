@@ -27,7 +27,7 @@ public class PaymentFailureService {
 
         log.error("Marcando pago como FAILED: {}", paymentId, ex);
 
-        payment.setStatus(PaymentStatus.FAILED);
+        payment.setStatus(PaymentStatus.REJECTED);
         payment.setFailureReason(truncate(
                 PaymentConstants.ERROR_PROCESSING_PAYMENT + ": " + ex.getMessage(),
                 PaymentConstants.MAX_FAILURE_REASON_LENGTH

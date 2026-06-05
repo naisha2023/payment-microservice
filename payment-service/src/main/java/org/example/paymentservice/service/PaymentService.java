@@ -8,6 +8,7 @@ import org.example.paymentservice.client.WalletClient;
 import org.example.paymentservice.constants.PaymentConstants;
 import org.example.paymentservice.dto.CreatePaymentRequest;
 import org.example.paymentservice.dto.PaymentResponse;
+import org.example.paymentservice.dto.PixProviderResponse;
 import org.example.paymentservice.dto.WalletOperationRequest;
 import org.example.paymentservice.dto.WalletResponse;
 import org.example.paymentservice.entity.OutboxEvent;
@@ -657,6 +658,19 @@ public class PaymentService {
 
         payment.markApproved();
 
+        WalletOperationRequest walletRequest = new WalletOperationRequest(
+                amount,
+                payment.getReference(),
+                payment.getDescription(),
+                payment.getId()
+        );
+
+        walletClient.deposit(
+                payment.getUserId(),
+                walletRequest,
+                jwt.getTokenValue()
+        );
+
         paymentRepository.save(payment);
 
         OutboxEvent event = new OutboxEvent(
@@ -683,18 +697,7 @@ public class PaymentService {
 
         outboxRepository.save(event);
 
-        WalletOperationRequest walletRequest = new WalletOperationRequest(
-                amount,
-                payment.getReference(),
-                payment.getDescription(),
-                payment.getId()
-        );
-
-        walletClient.deposit(
-                payment.getUserId(),
-                walletRequest,
-                jwt.getTokenValue()
-        );
+        
 
         OutboxEvent notificationEvent = new OutboxEvent(
                 UUID.randomUUID(),
@@ -745,6 +748,22 @@ public class PaymentService {
                 payment.setCurrency("BRL");
                 payment.setDescription("Depósito via PIX");
                 payment.setProvider("PIX_PROVIDER");
+
+                return paymentRepository.save(payment);
+        }
+
+        @Transactional
+        public Payment attachProviderData(
+                UUID paymentId,
+                PixProviderResponse pix
+        ) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+                payment.setProvider("C6");
+                payment.setProviderPaymentId(pix.providerPaymentId());
+                payment.setQrCode(pix.qrCode());
+                payment.setQrCodeBase64(pix.qrCodeBase64());
 
                 return paymentRepository.save(payment);
         }

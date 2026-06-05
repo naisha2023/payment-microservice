@@ -19,14 +19,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.example.paymentservice.enums.PaymentStatus;
-
-import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.example.paymentservice.dto.PixProviderResponse;
+import org.example.paymentservice.dto.PixWebhookRequest;
+import org.example.paymentservice.dto.ProviderPaymentStatus;
+import org.example.paymentservice.interfaces.PixProvider;
+import org.example.paymentservice.dto.PixDepositResponse;
 
 
 /**
@@ -40,6 +39,8 @@ import org.example.paymentservice.dto.PixProviderResponse;
 public class PaymentController {
 
     private final PaymentService paymentService;
+
+    private final PixProvider pixProvider;
 
     @Operation(summary = "Crear pago", description = "Crea un nuevo pago y reserva fondos en la wallet")
     @SecurityRequirement(name = "bearerAuth")
@@ -109,7 +110,7 @@ public class PaymentController {
     }
     
     @PostMapping("/pix/deposit")
-    public PaymentResponse createPixDeposit(
+    public PixDepositResponse createPixDeposit(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody CreatePaymentRequest request
     ) {
@@ -125,9 +126,7 @@ public class PaymentController {
 
         paymentService.attachProviderData(
                 payment.getId(),
-                pix.providerPaymentId(),
-                pix.qrCode(),
-                pix.qrCodeBase64()
+                pix
         );
 
         return new PixDepositResponse(
@@ -139,15 +138,16 @@ public class PaymentController {
     }
     
     @PostMapping("/webhooks/pix")
-    public ResponseEntity<Void> pixWebhook(@RequestBody PixWebhookRequest webhook) {
+    public ResponseEntity<Void> pixWebhook(@RequestBody PixWebhookRequest webhook, @AuthenticationPrincipal Jwt jwt) {
 
-        PaymentStatus status =
+        ProviderPaymentStatus status =
                 pixProvider.getPaymentStatus(webhook.providerPaymentId());
 
-        if (status.isApproved()) {
+        if (status.status().equals("COMPLETED")) {
             paymentService.confirmPixDeposit(
                     status.providerPaymentId(),
-                    status.amount()
+                    status.amount(),
+                    jwt
             );
         }
 
